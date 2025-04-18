@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-source "$(dirname $0)/_docker_utils.sh"
-
 BASH_HISTORY_FILE="$(dirname $0)/.docker_bash_history"
 if [ ! -f "${BASH_HISTORY_FILE}" ]; then
     touch "${BASH_HISTORY_FILE}"
@@ -18,10 +16,9 @@ elif [ "$#" -gt 1 ]; then
 fi
 
 function container_id() {
-    sudo docker ps -q --filter 'name=ithemal$'
+    docker ps -q --filter 'name=ithemal$'
 }
 
-get_sudo
 CONTAINER="$(container_id)"
 
 if [[ -z "${CONTAINER}" ]]; then
@@ -47,19 +44,19 @@ if [[ -z "${CONTAINER}" ]]; then
     fi
 
     FAKE_AWS_DIR=
-    AWS_DIR="$(sudo bash -c 'echo ${HOME}/.aws')"
+    AWS_DIR="$(bash -c 'echo ${HOME}/.aws')"
     if [ ! -d "${AWS_DIR}" ]; then
         FAKE_AWS_DIR="yep"
-        sudo mkdir -p "${AWS_DIR}"
+        mkdir -p "${AWS_DIR}"
     fi
 
-    docker_compose up -d --force-recreate
+    docker compose up -d --force-recreate
 
     CONTAINER="$(container_id)"
 
     if [[ "${FAKE_AWS_DIR}" == "yep" ]]; then
 	# hide the evidence
-	sudo rmdir "${AWS_DIR}"
+	rmdir "${AWS_DIR}"
     fi
 
     if [[ "${FAKE_X_SERVER}" == "yep" ]]; then
@@ -67,7 +64,7 @@ if [[ -z "${CONTAINER}" ]]; then
 	rmdir /tmp/.X11-unix
     fi
 
-    sudo docker exec -u ithemal "${CONTAINER}" bash -lc 'ithemal/build_all.sh'
+    docker exec -u ithemal "${CONTAINER}" bash -lc 'ithemal/build_all.sh'
 fi
 
-sudo docker exec -u "${USER}" -it "${CONTAINER}" /home/ithemal/ithemal/aws/aws_utils/tmux_attach.sh
+docker exec -u "${USER}" -it "${CONTAINER}" /home/ithemal/ithemal/aws/aws_utils/tmux_attach.sh

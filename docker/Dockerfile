@@ -1,7 +1,4 @@
-FROM debian:stretch
-
-RUN echo 'deb http://archive.debian.org/debian stretch main' > /etc/apt/sources.list && \
-        echo 'deb http://archive.debian.org/debian-security stretch/updates main' >> /etc/apt/sources.list
+FROM debian:bookworm-slim
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         build-essential             \
@@ -15,8 +12,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         man                         \
         nasm                        \
         pv                          \
-        python-dev                  \
-        qt5-default                 \
+        python3-dev                  \
+        #        qt5-default                 \
         sqlite3                     \
         sudo                        \
         tmux                        \
@@ -26,11 +23,14 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         zip
 
 # install mysql
-RUN wget -O /tmp/RPM-GPG-KEY-mysql https://repo.mysql.com/RPM-GPG-KEY-mysql && \
-        apt-key add /tmp/RPM-GPG-KEY-mysql && \
-        /bin/echo -e "deb http://repo.mysql.com/apt/debian/ stretch mysql-5.7\ndeb-src http://repo.mysql.com/apt/debian/ stretch mysql-5.7" > /etc/apt/sources.list.d/mysql.list && \
+# install mysql
+RUN apt-get update && apt-get install -y gnupg curl ca-certificates && \
+        mkdir -p /etc/apt/keyrings && \
+        curl -fsSL https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 | gpg --dearmor -o /etc/apt/keyrings/mysql.gpg && \
+        chmod 644 /etc/apt/keyrings/mysql.gpg && \
+        echo "deb [signed-by=/etc/apt/keyrings/mysql.gpg] http://repo.mysql.com/apt/debian/ bookworm mysql-8.0" > /etc/apt/sources.list.d/mysql.list && \
         apt-get update && \
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --allow-unauthenticated mysql-server
+        DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server
 
 COPY docker_my.cnf /etc/my.cnf
 
