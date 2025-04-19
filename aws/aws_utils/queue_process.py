@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import requests
-import spot_checker
+from . import spot_checker
 import subprocess
 import sys
 import tempfile

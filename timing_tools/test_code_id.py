@@ -65,7 +65,7 @@ def time_code_ids(code_ids, timer):
     mysql = subprocess.Popen(['mysql', '-N'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     (out, _) = mysql.communicate('SELECT code_id, code_raw FROM code WHERE code_id IN ({});\n'.format(','.join(map(str, code_ids))))
     jobs = {int(code_id): gevent.spawn(timer, code_raw) for (code_id, code_raw) in map(str.split, out.rstrip().split('\n'))}
-    gevent.joinall(jobs.values(), timeout=240)
+    gevent.joinall(list(jobs.values()), timeout=240)
     return {code_id: jobs[code_id].value for code_id in jobs}
 
 iaca_kind = (2, time_iaca, {'haswell': 'HSW', 'broadwell': 'BDW', 'skylake': 'SKL'})
@@ -102,9 +102,9 @@ def main():
     times = time_code_ids(args.code_id, timer)
 
     mysql = subprocess.Popen(['mysql'], stdin=subprocess.PIPE)
-    values = ','.join(map(str, ((code_id, arch_id, kind_id, speed) for (code_id, speed) in times.items() if speed is not None)))
+    values = ','.join(map(str, ((code_id, arch_id, kind_id, speed) for (code_id, speed) in list(times.items()) if speed is not None)))
     if args.insert:
-        print('Inserting {}'.format(len(times)))
+        print(('Inserting {}'.format(len(times))))
         mysql.communicate('INSERT INTO time (code_id, arch_id, kind_id, cycle_count) VALUES {};\n'.format(values))
     else:
         print(times)

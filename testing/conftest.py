@@ -5,10 +5,10 @@ import glob
 import re
 from shutil import copyfile
 
-dynamorio = pytest.mark.skipif('DYNAMORIO_HOME' not in os.environ.keys(),
+dynamorio = pytest.mark.skipif('DYNAMORIO_HOME' not in list(os.environ.keys()),
                                 reason="DYNAMORIO_HOME not set")
 
-ithemal = pytest.mark.skipif('ITHEMAL_HOME' not in os.environ.keys(),
+ithemal = pytest.mark.skipif('ITHEMAL_HOME' not in list(os.environ.keys()),
                                 reason="ITHEMAL_HOME not set")
 
 @pytest.fixture(scope="module")

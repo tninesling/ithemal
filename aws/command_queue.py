@@ -10,7 +10,7 @@ import start_instance
 import subprocess
 import sys
 try:
-    import urlparse
+    import urllib.parse
 except ImportError:
     import urrlib.parse as urlparse
 from typing import Optional
@@ -43,7 +43,7 @@ def create_queue(identity, queue, instance_type, instance_count, ignore_exists, 
 
     queue_exists = queue_url_of_name(queue)
     if queue_exists and not ignore_exists:
-        print('Queue {} already exists!'.format(queue))
+        print(('Queue {} already exists!'.format(queue)))
         return
 
     queue_url = json.loads(subprocess.check_output([
@@ -88,7 +88,7 @@ def send_messages(queue, com):
 
     url = queue_url_of_name(queue)
     if not url:
-        print('Queue {} doesn\'t exist!'.format(queue))
+        print(('Queue {} doesn\'t exist!'.format(queue)))
         return
 
     if com:
@@ -97,9 +97,9 @@ def send_messages(queue, com):
         try:
             while True:
                 if sys.stdin.isatty():
-                    com = input('com> ')
+                    com = eval(input('com> '))
                 else:
-                    com = input()
+                    com = eval(input())
                 aws_utils.queue_process.send_message(url, com)
         except (EOFError, KeyboardInterrupt):
             pass
@@ -109,7 +109,7 @@ def kill_queue(queue):
 
     url = queue_url_of_name(queue)
     if not url:
-        print('Queue {} doesn\'t exist!'.format(queue))
+        print(('Queue {} doesn\'t exist!'.format(queue)))
         return
 
     subprocess.check_call([
@@ -140,7 +140,7 @@ def running_of_queue(identity, queue):
             '--com', os.path.join('${ITHEMAL_HOME}', 'aws', 'aws_utils', 'get_running_queue_command.sh')
         ], stderr=open('/dev/null', 'w')).strip()
         if out:
-            print('{} || {}'.format(instance['InstanceId'], out))
+            print(('{} || {}'.format(instance['InstanceId'], out)))
 
 
 def preview_queue(queue):
@@ -148,7 +148,7 @@ def preview_queue(queue):
 
     url = queue_url_of_name(queue)
     if not url:
-        print('Queue {} doesn\'t exist!'.format(queue))
+        print(('Queue {} doesn\'t exist!'.format(queue)))
         return
 
     output = subprocess.check_output([
@@ -165,14 +165,14 @@ def preview_queue(queue):
     messages = json.loads(output)['Messages']
 
     for message in messages:
-        print('> {}'.format(message['Body']))
+        print(('> {}'.format(message['Body'])))
 
 def manage_queue(queue):
     # type: (str) -> None
 
     url_ = queue_url_of_name(queue)
     if not url_:
-        print('Queue {} doesn\'t exist!'.format(queue))
+        print(('Queue {} doesn\'t exist!'.format(queue)))
         return
     else:
         url = url_
@@ -283,7 +283,7 @@ def list_queues():
 
     def parse_url(url):
         # type: (str) -> str
-        full_name = urlparse.urlparse(url).path.split('/')[-1]
+        full_name = urllib.parse.urlparse(url).path.split('/')[-1]
         suffix = '.fifo'
         if full_name.endswith(suffix):
             name = full_name[:-len(suffix)]
@@ -292,7 +292,7 @@ def list_queues():
 
         return '{} ({})'.format(name, url)
 
-    print('\n'.join(map(parse_url, queues)))
+    print(('\n'.join(map(parse_url, queues))))
 
 def main():
     # type: () -> None

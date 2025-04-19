@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import sys
-import utilities as ut
+from . import utilities as ut
 import numpy as np
 import random
 

@@ -76,7 +76,7 @@ def insert_col_values(cnx, cols, values, code_id, arch, ttable):
                 
 
         sql = 'INSERT INTO ' + ttable + ' (code_id, arch, kind,' + colstr + ')  VALUES(' + str(code_id) + ',' + str(arch) + ',\'actual\',' + valuestr + ')'
-        print sql
+        print(sql)
         ut.execute_query(cnx, sql, False)
         cnx.commit()
 
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     cnx = ut.create_connection(database=args.database, user=args.user, password=args.password, port=args.port)
     sql = 'SELECT code_intel, code_id from ' + args.ctable
     rows = ut.execute_query(cnx, sql, True)
-    print len(rows)
+    print(len(rows))
 
     harness_dir = os.environ['ITHEMAL_HOME'] + '/timing_tools/harness'
     os.chdir(harness_dir)
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     assert counters is not None
     counters.set_modes()
     overhead = counters.get_mode('Core_cyc')
-    print 'OVERHEAD =', overhead
+    print('OVERHEAD =', overhead)
 
     for row in rows:
 
@@ -260,13 +260,13 @@ if __name__ == '__main__':
 
             if result != None:
 
-                print final_bb
+                print(final_bb)
 
                 try:
                     error_lines = False
                     for line in iter(proc.stderr.readline, ''):
                         if check_error(line):
-                            print 'error ' + line
+                            print('error ' + line)
                             error_lines = True
                             break
 
@@ -275,7 +275,7 @@ if __name__ == '__main__':
                         startTimes = False
                         counters = None
                         for i, line in enumerate(iter(proc.stdout.readline, '')):
-                            print line
+                            print(line)
                             if 'Clock' in line and startTimes == False and startHeading == False: #still didn't start collecting the actual timing data
                                 startHeading = True
                             if startHeading == True:
@@ -302,34 +302,34 @@ if __name__ == '__main__':
                                     if name == 'Core_cyc':
                                         for j, v in enumerate(values[-1]):
                                             values[-1][j] -= overhead
-                            print aval_cols, values
+                            print(aval_cols, values)
 
                             if not args.tp:
                                 insert_col_values(cnx, aval_cols, values, row[1], args.arch, args.ttable)
                                     
                             total_time += end_time - start_time
                             total_bbs += 1
-                            print float(total_bbs)/total_time
+                            print(float(total_bbs)/total_time)
                             success += 1
                     else:
                         for line in final_bb:
-                            print line[:-1]
+                            print(line[:-1])
                         errors += 1
                 except Exception as e:
-                    print e
-                    print 'exception occurred'
+                    print(e)
+                    print('exception occurred')
                     except_errors += 1
 
             else:
-                print 'error not completed'
+                print('error not completed')
                 not_finished += 1
 
         if args.limit != None:
             if success == args.limit:
                 break
 
-        print total, success, errors, not_finished, except_errors
+        print(total, success, errors, not_finished, except_errors)
 
 
-    print overhead
+    print(overhead)
     cnx.close()

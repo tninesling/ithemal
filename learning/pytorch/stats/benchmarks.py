@@ -75,7 +75,7 @@ def print_benchmark(benchmark, name):
         tbbs += bbs
         tprograms += programs
           
-    print name + ' ' + str(tprograms) + ' ' + str(tbbs)
+    print(name + ' ' + str(tprograms) + ' ' + str(tbbs))
 
         
 
@@ -162,7 +162,7 @@ if __name__ == '__main__':
     sql = 'SELECT distinct(module) FROM code_metadata WHERE code_id IN (SELECT DISTINCT(code_id) FROM time WHERE kind_id=1 AND arch_id=' + str(args.arch) + ')'
     rows = ut.execute_query(cnx, sql, True)
 
-    print 'distinct basic blocks found : ' + str(len(rows))
+    print('distinct basic blocks found : ' + str(len(rows)))
 
     
     
@@ -178,11 +178,11 @@ if __name__ == '__main__':
             for program in bench.programs:
                 if program.name.startswith(value) and (not (value == 'lu' and bench.name == 'NAS')):
                     if found:
-                        print 'ori ' + bench_f
-                        print 'ori ' + program_f
-                        print value
-                        print program.name
-                        print bench.name
+                        print('ori ' + bench_f)
+                        print('ori ' + program_f)
+                        print(value)
+                        print(program.name)
+                        print(bench.name)
                     # assert(not found)
                     found = True
                     program_f = program.name
@@ -230,18 +230,18 @@ if __name__ == '__main__':
     for bench in allbench:
         total += len(bench.programs)
 
-    print 'all programs (pre-populated included) : ' + str(total)
-    print 'unaffiliated bbs ' + str(unaffiliated_bbs)
-    print 'total bbs ' + str(len(rows))
+    print('all programs (pre-populated included) : ' + str(total))
+    print('unaffiliated bbs ' + str(unaffiliated_bbs))
+    print('total bbs ' + str(len(rows)))
 
-    print 'unaffiliated\n'
+    print('unaffiliated\n')
     for mod in unaffiliated_modules:
-        print mod
+        print(mod)
     
-    print '\nstatistics for each benchmark'
-    print 'name -- bbs -- timed bbs'
+    print('\nstatistics for each benchmark')
+    print('name -- bbs -- timed bbs')
 
-    print '\narch : ' + str(args.arch) + '\n'
+    print('\narch : ' + str(args.arch) + '\n')
 
     tbbs = 0
     tprograms = 0
@@ -261,14 +261,14 @@ if __name__ == '__main__':
                 programs += 1
                 bbs += program.basicblocks
 
-        print bench.name + ' ' + str(programs) + ' ' + str(bbs)
+        print(bench.name + ' ' + str(programs) + ' ' + str(bbs))
 
         tbbs += bbs
         tprograms += programs
           
-    print 'Total ' + str(tprograms) + ' ' + str(tbbs)
+    print('Total ' + str(tprograms) + ' ' + str(tbbs))
 
-    print 'Total from count ' + str(tbbs + unaffiliated_bbs)
+    print('Total from count ' + str(tbbs + unaffiliated_bbs))
 
     print_benchmark(compilers, 'compilers')
     print_benchmark(consumer, 'consumer')

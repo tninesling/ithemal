@@ -70,8 +70,8 @@ def create_bin(filename, outfilename, sections_list):
 			section_offsets[section[0]] = running_offset
 			running_offset += section[1]
 		except Exception as e:
-			print "Error while copying section " + section[0] + " to output file"
-			print e
+			print("Error while copying section " + section[0] + " to output file")
+			print(e)
 			exit(-1)
 
 	input_file.close()
@@ -86,8 +86,8 @@ def create_metadata(metadata_filename, symbol_list, section_offsets):
 		try:
 			actual_offset = section_offsets[symbol[1]] + symbol[2]
 		except Exception as e:
-			print "Error while creating metadata for function " + symbol[0] 
-			print e
+			print("Error while creating metadata for function " + symbol[0]) 
+			print(e)
 			exit(-1)
 		metadata_file.write(symbol[0] + "\t" + str(actual_offset) + "\t" + str(symbol[3]) + "\n")
 	
@@ -95,7 +95,7 @@ def create_metadata(metadata_filename, symbol_list, section_offsets):
 
 def main():
 	if len(sys.argv) < 4:
-		print "Usage: " + sys.argv[0] + " <input filename> <output binary filename> <output metadata filename>"
+		print("Usage: " + sys.argv[0] + " <input filename> <output binary filename> <output metadata filename>")
 		exit(-1)
 	input_filename = sys.argv[1]
 	output_filename = sys.argv[2]
@@ -105,7 +105,7 @@ def main():
 	symbol_list = extract_symbols(input_filename, section_vma)
 	section_offsets = create_bin(input_filename, output_filename, section_list)
 	create_metadata(output_metadata_filename, symbol_list, section_offsets)
-	print "DONE"
+	print("DONE")
 
 if __name__ == "__main__":
 	main()

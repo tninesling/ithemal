@@ -6,7 +6,7 @@ import json
 import os
 import subprocess
 import sys
-import urlparse
+import urllib.parse
 import tempfile
 import time
 import traceback
@@ -37,11 +37,11 @@ _BENCHMARK_CHECKPOINT = os.path.join(
 def debug_print(params):
     # type: (List[str]) -> None
     if DEBUG:
-        print(' '.join(params))
+        print((' '.join(params)))
 
 def get_s3_url(bucket, path):
     # type: (str, str) -> str
-    return urlparse.urlunsplit(['s3', bucket, path, '', ''])
+    return urllib.parse.urlunsplit(['s3', bucket, path, '', ''])
 
 def mkdir(directory):
     # type: (str) -> None
@@ -205,7 +205,7 @@ class Experiment(object):
             debug_print(params)
             checkpoints_output = subprocess.check_output(params).strip()
             if checkpoints_output:
-                print('Checkpoints Output: "{}", split: "{}"'.format(checkpoints_output, checkpoints_output.strip().split('\n')))
+                print(('Checkpoints Output: "{}", split: "{}"'.format(checkpoints_output, checkpoints_output.strip().split('\n'))))
                 checkpoint_files = [line.split()[1] for line in checkpoints_output.split('\n')]
                 checkpoint_times = [os.path.basename(fname)[:-len('.mdl')] for fname in checkpoint_files]
                 self.enqueue_checkpoints(checkpoint_times)

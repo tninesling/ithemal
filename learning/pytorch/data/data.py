@@ -23,7 +23,7 @@ class Data(object):
         self.costs = dict()
 
     def extract_data(self, cnx, format, fields):
-        print 'extracting data'
+        print('extracting data')
         self.raw_data = ut.get_data(cnx, format, fields)
         self.fields = fields
 
@@ -54,7 +54,7 @@ class Data(object):
         split = (size * self.percentage) // 100
         self.train  = self.data[:split]
         self.test = self.data[(split + 1):]
-        print 'train ' + str(len(self.train)) + ' test ' + str(len(self.test))
+        print('train ' + str(len(self.train)) + ' test ' + str(len(self.test)))
 
 
     def generate_batch(self, batch_size, partition=None):
@@ -63,7 +63,7 @@ class Data(object):
 
         # TODO: this seems like it would be expensive for a large data set
         (start, end) = partition
-        population = range(start, end)
+        population = list(range(start, end))
         selected = random.sample(population,batch_size)
 
         self.batch = []

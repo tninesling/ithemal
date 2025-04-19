@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+
 
 import sys
 import os
@@ -12,7 +12,7 @@ matplotlib.use('Agg')
 
 import argparse
 import common_libs.utilities as ut
-import data_cost as dt
+from . import data_cost as dt
 import os
 import time
 import torch
@@ -20,7 +20,7 @@ from tqdm import tqdm
 from typing import Any, Dict, Iterable, List, Optional, Set, Sequence
 
 try:
-    import cPickle as pickle
+    import pickle as pickle
 except ImportError:
     import pickle # type: ignore
 

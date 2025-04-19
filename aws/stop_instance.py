@@ -24,12 +24,12 @@ class InstanceKiller(AwsInstance):
             return
 
         if not self.force:
-            print('Will kill the following instance{}:'.format('s' if len(instances_to_kill) else ''))
+            print(('Will kill the following instance{}:'.format('s' if len(instances_to_kill) else '')))
             for instance in instances_to_kill:
                 if isinstance(instance, str):
                     print(instance)
                 else:
-                    print(format_instance(instance))
+                    print((format_instance(instance)))
 
             try:
                 res = input('Proceed? (y/n) ')[0].lower()
@@ -57,10 +57,10 @@ def interactively_kill_instances(instance_killer):
 
         print('Active instances:')
         for i, instance in enumerate(instances):
-            print('{}) {}'.format(i + 1, format_instance(instance)))
+            print(('{}) {}'.format(i + 1, format_instance(instance))))
 
         try:
-            res = input('Enter a number to kill that instance, "a" to kill all, or "q" to exit: ')
+            res = eval(input('Enter a number to kill that instance, "a" to kill all, or "q" to exit: '))
         except KeyboardInterrupt:
             return
         except EOFError:
@@ -74,11 +74,11 @@ def interactively_kill_instances(instance_killer):
             try:
                 index_to_kill = int(res)
             except ValueError:
-                print('"{}" is not an integer.'.format(res))
+                print(('"{}" is not an integer.'.format(res)))
                 continue
 
             if index_to_kill < 1 or index_to_kill > len(instances):
-                print('{} is not between 1 and {}.'.format(index_to_kill, len(instances) + 1))
+                print(('{} is not between 1 and {}.'.format(index_to_kill, len(instances) + 1)))
                 continue
 
             instance_to_kill = instances[index_to_kill - 1]

@@ -15,9 +15,7 @@ try:
 except NameError:
     pass
 
-class InstanceConnectorABC(AwsInstance):
-    __metaclass__ = ABCMeta
-
+class InstanceConnectorABC(AwsInstance, metaclass=ABCMeta):
     @abstractmethod
     def connect_to_instance(self, instance):
         # type: (Dict[str, Any]) -> None
@@ -60,7 +58,7 @@ def list_instances(instances):
         return
 
     for i, instance in enumerate(instances):
-        print('{}) {}'.format(i + 1, format_instance(instance)))
+        print(('{}) {}'.format(i + 1, format_instance(instance))))
 
 
 def interactively_connect_to_instance(aws_instances):
@@ -77,7 +75,7 @@ def interactively_connect_to_instance(aws_instances):
         list_instances(instances)
 
         try:
-            res = input('Enter a number to connect to that instance, or "q" to exit: ')
+            res = eval(input('Enter a number to connect to that instance, or "q" to exit: '))
         except KeyboardInterrupt:
             return
         except EOFError:
@@ -89,11 +87,11 @@ def interactively_connect_to_instance(aws_instances):
             try:
                 index_to_connect = int(res)
             except ValueError:
-                print('"{}" is not an integer.'.format(res))
+                print(('"{}" is not an integer.'.format(res)))
                 continue
 
             if index_to_connect < 1 or index_to_connect > len(instances):
-                print('{} is not between 1 and {}.'.format(index_to_connect, len(instances)))
+                print(('{} is not between 1 and {}.'.format(index_to_connect, len(instances))))
                 continue
 
             instance = instances[index_to_connect - 1]
@@ -111,7 +109,7 @@ def connect_to_instance_id_or_index(aws_instances, id_or_index):
     try:
         idx = int(id_or_index)
         if idx <= 0 or idx > len(instances):
-            print('Provided index must be in the range [{}, {}]'.format(1, len(instances)))
+            print(('Provided index must be in the range [{}, {}]'.format(1, len(instances))))
             return
 
         aws_instances.connect_to_instance(instances[idx - 1])

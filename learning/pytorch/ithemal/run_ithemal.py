@@ -14,7 +14,7 @@ from tqdm import tqdm
 from mpconfig import MPConfig
 from typing import Callable, List, Optional, Iterator, Tuple, NamedTuple, Union
 import random
-import Queue
+import queue
 from ithemal_utils import *
 import training
 import pandas as pd
@@ -54,10 +54,10 @@ def graph_model_benchmark(base_params, benchmark_params):
         p.join()
 
     end_time = time.time()
-    print('Time to process {} examples: {} seconds'.format(
+    print(('Time to process {} examples: {} seconds'.format(
         benchmark_params.examples,
         end_time - start_time,
-    ))
+    )))
 
 def graph_model_validate(base_params, model_file, iaca_only):
     # type: (BaseParameters, str, bool) -> None

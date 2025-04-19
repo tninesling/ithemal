@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
+
 
 import argparse
 import binascii
-import common_libs.utilities as ut
+# import common_libs.utilities as ut
 import copy
 import data.data_cost as dt
 import itertools
@@ -17,8 +17,8 @@ import threading
 import torch
 import warnings
 
-START_MARKER = 'bb6f000000646790'.decode('hex')
-END_MARKER = 'bbde000000646790'.decode('hex')
+START_MARKER = binascii.unhexlify('bb6f000000646790')
+END_MARKER = binascii.unhexlify('bbde000000646790')
 
 _TOKENIZER = os.path.join(os.environ['ITHEMAL_HOME'], 'data_collection', 'build', 'bin', 'tokenizer')
 
@@ -29,7 +29,7 @@ def load_model_and_data(model_file, model_data_file):
 
     state_dict = torch.load(model_data_file)
     model_dict = model.state_dict()
-    new_model_dict = {k: v for (k, v) in state_dict['model'].items() if k in model_dict}
+    new_model_dict = {k: v for (k, v) in list(state_dict['model'].items()) if k in model_dict}
     model_dict.update(new_model_dict)
     model.load_state_dict(model_dict)
 
@@ -66,10 +66,10 @@ def read_basic_block(fname, data, verbose):
 def predict(model, data, fname, verbose):
     datum = read_basic_block(fname, data, verbose)
     if verbose:
-        print('='*40)
-        print('\n'.join(i.intel for i in datum.block.instrs))
-        print('='*40)
-    print(model(datum).item())
+        print(('='*40))
+        print(('\n'.join(i.intel for i in datum.block.instrs)))
+        print(('='*40))
+    print((model(datum).item()))
     model.remove_refs(datum)
 
 def predict_raw(model_arg, data_arg, verbose, parallel):
@@ -112,7 +112,7 @@ def predict_raw(model_arg, data_arg, verbose, parallel):
     output_worker.start()
     try:
         while True:
-            line = raw_input().strip()
+            line = input().strip()
             input_q.put(line)
     except EOFError:
         for _ in range(parallel):

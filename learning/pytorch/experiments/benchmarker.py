@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
-import experiment
+from . import experiment
 import subprocess
 import os
 from typing import List, NamedTuple, Optional

@@ -7,7 +7,7 @@ class MeanPredictor(nn.Module):
         super(MeanPredictor, self).__init__()
         self._throwaway_param = nn.Linear(1, 1)
         self.mean = sum(datum.y for datum in data.train) / float(len(data.train))
-        print('we gonna predict {}'.format(self.mean))
+        print(('we gonna predict {}'.format(self.mean)))
 
     def remove_refs(self, arg):
         pass

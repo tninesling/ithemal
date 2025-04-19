@@ -139,7 +139,7 @@ if __name__ == '__main__':
     cnx = ut.create_connection(database=args.database, user=args.user, password=args.password, port=args.port)
     sql = 'SELECT code_att, code_id from code'
     rows = ut.execute_query(cnx, sql, True)
-    print len(rows)
+    print(len(rows))
 
     iaca_home = os.environ['ITHEMAL_HOME'] + '/timing_tools/iaca/'
     os.chdir(iaca_home + args.subd)
@@ -154,7 +154,7 @@ if __name__ == '__main__':
                 start_line = i
                 break
 
-    print start_line
+    print(start_line)
 
     total = 0
     errors = 0
@@ -204,12 +204,12 @@ if __name__ == '__main__':
 
                 try:
                     for line in iter(proc.stderr.readline, ''):
-                        print line
+                        print(line)
                         if check_error(line):
                             error_comp = True
                             break
                     for line in iter(proc.stdout.readline, ''):
-                        print line
+                        print(line)
                         if check_error(line):
                             error_comp = True
                             break
@@ -235,7 +235,7 @@ if __name__ == '__main__':
 
                 error_lines = False
                 for line in iter(proc.stderr.readline, ''):
-                    print line
+                    print(line)
                     if check_error(line):
                         error_lines = True
                         break
@@ -249,19 +249,19 @@ if __name__ == '__main__':
                             cycles = float(found.group(1))
                             if cycles != 0:
                                 total_time += end_time - start_time
-                                print cycles
+                                print(cycles)
                                 if not args.tp:
                                     insert_time_value(cnx, row[1], cycles, args.arch)
                             break
                 else:
                     for line in final_bb:
-                        print line[:-1]
+                        print(line[:-1])
                     errors += 1
 
             else:
-                print 'error not completed'
+                print('error not completed')
                 not_finished += 1
 
-        print total, success, errors, not_finished, except_errors, total_time
+        print(total, success, errors, not_finished, except_errors, total_time)
 
     cnx.close()

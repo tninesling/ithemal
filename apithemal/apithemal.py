@@ -36,7 +36,7 @@ def log_request_info():
     app.logger.debug('Headers: %s', request.headers)
 
     try:
-        code = '\n'.join(map(strip_comment, map(str.strip, request.form['code'].encode('utf-8').strip().split('\n'))))
+        code = '\n'.join(map(strip_comment, list(map(str.strip, request.form['code'].encode('utf-8').strip().split('\n')))))
         model = request.form['model'].encode('utf-8').strip()
 
         app.logger.debug('Code: %s', code)
@@ -58,7 +58,7 @@ def predict():
     if request.method == 'GET':
         return index()
 
-    code = '\n'.join(map(strip_comment, map(str.strip, request.form['code'].encode('utf-8').strip().split('\n'))))
+    code = '\n'.join(map(strip_comment, list(map(str.strip, request.form['code'].encode('utf-8').strip().split('\n')))))
     model = request.form['model'].encode('utf-8').strip()
 
     try:

@@ -18,7 +18,7 @@ if __name__ == '__main__':
     valid = 0
 
     for file in files:
-        print file
+        print(file)
         with open(file, 'r') as f:
             for line in f:
                 lines += 1
@@ -34,7 +34,7 @@ if __name__ == '__main__':
                     if ok:
                         valid += 1
 
-    print lines, nonempty, valid
+    print(lines, nonempty, valid)
 
 
 

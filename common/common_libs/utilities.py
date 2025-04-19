@@ -13,10 +13,10 @@ from typing import Dict, FrozenSet, Optional, Tuple, Union
 def create_connection(database=None, user=None, password=None, port=None):
     args = {}
 
-    option_files = list(filter(os.path.exists, map(os.path.abspath, map(os.path.expanduser, [
+    option_files = list(filter(os.path.exists, list(map(os.path.abspath, list(map(os.path.expanduser, [
         '/etc/my.cnf',
         '~/.my.cnf',
-    ]))))
+    ]))))))
 
     if option_files:
         args['option_files'] = option_files
@@ -87,10 +87,10 @@ def get_data(cnx, format, cols, limit=None):
         if limit is not None:
             sql += ' LIMIT {}'.format(limit)
 
-        print sql
+        print(sql)
         data = list()
         cur.execute(sql)
-        print cur.rowcount
+        print((cur.rowcount))
         row = cur.fetchone()
         while row != None:
             item = list()
@@ -114,7 +114,7 @@ def get_data(cnx, format, cols, limit=None):
             data.append(item)
             row = cur.fetchone()
     except Exception as e:
-        print e
+        print(e)
     else:
         return data
 
@@ -236,7 +236,7 @@ def get_percentage_error(predicted, actual):
     return errors
 
 _global_sym_dict, _global_mem_start = get_sym_dict()
-_global_sym_dict_rev = {v:k for (k, v) in _global_sym_dict.items()}
+_global_sym_dict_rev = {v:k for (k, v) in list(_global_sym_dict.items())}
 
 #calculating static properties of instructions and basic blocks
 class Instruction:
@@ -258,10 +258,10 @@ class Instruction:
         return Instruction(self.opcode, self.srcs[:], self.dsts[:], self.num)
 
     def print_instr(self):
-        print self.num, self.opcode, self.srcs, self.dsts
+        print((self.num, self.opcode, self.srcs, self.dsts))
         num_parents = [parent.num for parent in self.parents]
         num_children = [child.num for child in self.children]
-        print num_parents, num_children
+        print((num_parents, num_children))
 
     def __str__(self):
         return self.intel
@@ -304,7 +304,7 @@ class InstructionReplacer(object):
             return None
 
         unused = list(unused_set)
-        unused_intel = list(map(lambda x: x[x.rindex('_')+1:].lower(), unused))
+        unused_intel = list([x[x.rindex('_')+1:].lower() for x in unused])
         unused_token = list(map(_global_sym_dict_rev.get, unused))
 
         new_instr = instr.clone()
@@ -313,17 +313,17 @@ class InstructionReplacer(object):
             **match.groupdict()
         )
 
-        new_instr.srcs = list(map(int, map(lambda x: x.format(
+        new_instr.srcs = list(map(int, [x.format(
             srcs=instr.srcs,
             dsts=instr.dsts,
             unused=unused_token,
-        ), self.replacement_srcs)))
+        ) for x in self.replacement_srcs]))
 
-        new_instr.dsts = list(map(int, map(lambda x: x.format(
+        new_instr.dsts = list(map(int, [x.format(
             srcs=instr.srcs,
             dsts=instr.dsts,
             unused=unused_token,
-        ), self.replacement_dsts)))
+        ) for x in self.replacement_dsts]))
 
         return new_instr
 
@@ -419,10 +419,10 @@ class BasicBlock:
         for dst in map(_get_canonical_operand, instr.dsts):
             for i in range(n + 1, len(self.instrs), 1):
                 dst_instr = self.instrs[i]
-                if dst in map(_get_canonical_operand, dst_instr.srcs):
+                if dst in list(map(_get_canonical_operand, dst_instr.srcs)):
                     if not dst_instr in instr.children:
                         instr.children.append(dst_instr)
-                if dst in map(_get_canonical_operand, dst_instr.dsts): #value becomes dead here
+                if dst in list(map(_get_canonical_operand, dst_instr.dsts)): #value becomes dead here
                     break
 
     def find_defs(self, n):
@@ -431,7 +431,7 @@ class BasicBlock:
         for src in map(_get_canonical_operand, instr.srcs):
             for i in range(n - 1, -1, -1):
                 src_instr = self.instrs[i]
-                if src in map(_get_canonical_operand, src_instr.dsts):
+                if src in list(map(_get_canonical_operand, src_instr.dsts)):
                     if not src_instr in instr.parents:
                         instr.parents.append(src_instr)
                     break
@@ -746,12 +746,12 @@ if __name__ == "__main__":
     sym_dict, mem_start = get_sym_dict()
 
     for row in rows:
-        print row[0]
+        print((row[0]))
         code = []
         for val in row[1].split(','):
             if val != '':
                 code.append(get_name(int(val),sym_dict,mem_start))
-        print code
+        print(code)
 
 
     sql = 'SELECT time from times where code_id = ' + str(rows[0][0])
@@ -759,4 +759,4 @@ if __name__ == "__main__":
     rows = cur.fetchall()
 
     times = [int(t[0]) for t in rows]
-    print sorted(times)
+    print((sorted(times)))

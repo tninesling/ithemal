@@ -59,7 +59,7 @@ def cross_entropy_loss_with_weights(output,target):
 
     mean = nz
     std = nz * 0.05
-    weight_points = range(target.shape[0])
+    weight_points = list(range(target.shape[0]))
 
     normal = torch.distributions.normal.Normal(mean, std)
     weight_values = torch.exp(normal.log_prob(torch.FloatTensor(weight_points)))

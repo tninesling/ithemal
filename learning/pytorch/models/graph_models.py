@@ -34,19 +34,19 @@ class AbstractGraphModule(nn.Module):
             embedding = nn.Embedding(dictsize, self.embedding_size)
 
         if mode == 'none':
-            print 'learn embeddings form scratch...'
+            print('learn embeddings form scratch...')
             initrange = 0.5 / self.embedding_size
             embedding.weight.data.uniform_(-initrange, initrange)
             self.final_embeddings = embedding
         elif mode == 'seed':
-            print 'seed by word2vec vectors....'
+            print('seed by word2vec vectors....')
             embedding.weight.data = torch.FloatTensor(seed)
             self.final_embeddings = embedding
         elif mode == 'learnt':
-            print 'using learnt word2vec embeddings...'
+            print('using learnt word2vec embeddings...')
             self.final_embeddings = seed
         else:
-            print 'embedding not selected...'
+            print('embedding not selected...')
             exit()
 
     def dump_shared_params(self):
@@ -62,7 +62,7 @@ class AbstractGraphModule(nn.Module):
 
     def load_state_dict(self, state_dict):
         model_dict = self.state_dict()
-        new_model_dict = {k: v for (k, v) in state_dict.items() if k in model_dict}
+        new_model_dict = {k: v for (k, v) in list(state_dict.items()) if k in model_dict}
         model_dict.update(new_model_dict)
         super(AbstractGraphModule, self).load_state_dict(model_dict)
 
@@ -173,11 +173,11 @@ class GraphNN(AbstractGraphModule):
         elif self.reduction_typ == ReductionType.ATTENTION:
             preds = torch.stack([self.attention_2(torch.relu(self.attention_1(item))) for item in items])
             probs = F.softmax(preds, dim=0)
-            print('{}, {}, {}'.format(
+            print(('{}, {}, {}'.format(
                 probs.shape,
                 stacked_items.shape,
                 stacked_items * probs
-            ))
+            )))
             return (stacked_items * probs).sum(dim=0)
         else:
             raise ValueError()

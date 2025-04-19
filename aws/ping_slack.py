@@ -4,7 +4,7 @@ import argparse
 import base64
 import json
 import subprocess
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import os
 from typing import Optional
 
@@ -48,7 +48,7 @@ def send_message(message):
         'icon_url': SLACK_ICON,
     }
 
-    urllib2.urlopen(urllib2.Request(WEBHOOK_URL, json.dumps(payload)))
+    urllib.request.urlopen(urllib.request.Request(WEBHOOK_URL, json.dumps(payload)))
 
 def main():
     # type: () -> None

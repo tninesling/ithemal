@@ -440,7 +440,7 @@ def run_training_worker(identifier, rank):
                 time.sleep(1)
                 continue
             elif isinstance(msg, KillResp):
-                print('Trainer {} dying'.format(rank))
+                print(('Trainer {} dying'.format(rank)))
                 return
             elif isinstance(msg, ShuffleDataResp):
                 random.setstate(msg.random_state)
