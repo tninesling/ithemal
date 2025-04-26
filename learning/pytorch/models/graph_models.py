@@ -68,11 +68,14 @@ class AbstractGraphModule(nn.Module):
 
     def init_hidden(self):
         # type: () -> Tuple[nn.Parameter, nn.Parameter]
+        h1 = nn.Parameter(torch.zeros(1, 1, self.hidden_size, requires_grad=True))
+        h2 = nn.Parameter(torch.zeros(1, 1, self.hidden_size, requires_grad=True))
 
-        return (
-            nn.Parameter(torch.zeros(1, 1, self.hidden_size, requires_grad=True)),
-            nn.Parameter(torch.zeros(1, 1, self.hidden_size, requires_grad=True)),
-        )
+        if torch.cuda.is_available():
+            h1 = h1.cuda()
+            h2 = h2.cuda()
+            
+        return (h1, h2)
 
     def remove_refs(self, item):
         # type: (dt.DataItem) -> None
@@ -379,6 +382,11 @@ class RNN(AbstractGraphModule):
 
         self.linear = nn.Linear(self.hidden_size, self.num_classes)
 
+        if torch.cuda.is_available():
+            self.token_rnn = self.token_rnn.cuda()
+            self.instr_rnn = self.instr_rnn.cuda()
+            self.linear = self.linear.cuda()
+
     def rnn_init_hidden(self):
         # type: () -> Union[Tuple[nn.Parameter, nn.Parameter], nn.Parameter]
 
@@ -441,7 +449,11 @@ class RNN(AbstractGraphModule):
                     else:
                         token_state = token_state + parent_state
 
-            tokens = self.final_embeddings(torch.LongTensor(token_inputs)).unsqueeze(1)
+            token_inputs = torch.LongTensor(token_inputs)
+            if torch.cuda.is_available():
+                token_inputs = token_inputs.cuda()
+                #token_state = token_state.cuda()
+            tokens = self.final_embeddings(token_inputs).unsqueeze(1)
             output, state = self.token_rnn(tokens, token_state)
             token_output_map[instr] = output
             token_state_map[instr] = state

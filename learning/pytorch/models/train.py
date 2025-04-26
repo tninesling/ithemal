@@ -224,6 +224,8 @@ class Train():
 
     def train(self, report_loss_fn=None):
         # type: (Optional[Callable[[messages.Message], None]]) -> None
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
 
         (partition_start, partition_end) = self.partition
 
@@ -241,6 +243,8 @@ class Train():
 
             self.optimizer.zero_grad()
             loss_tensor = torch.FloatTensor([0]).squeeze()
+            if torch.cuda.is_available():
+                loss_tensor = loss_tensor.cuda()
             batch = self.data.train[idx:idx+self.batch_size]
 
             if not batch:
@@ -255,6 +259,8 @@ class Train():
 
                 #target as a tensor
                 target = self.get_target(datum)
+                if torch.cuda.is_available():
+                    target = target.cuda()
 
                 #get the loss value
                 if self.loss_fn:
@@ -331,11 +337,19 @@ class Train():
         actual = []
         predicted = []
 
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
+
         for j, item in enumerate(tqdm(self.data.test)):
 
             #print len(item.x)
             output = self.model(item)
             target = self.get_target(item)
+
+            if torch.cuda.is_available():
+                # We shifted everything onto the GPU for training, but we convert
+                # with `.numpy()` below, so we need to shift back to CPU
+                output = output.cpu()
 
             if self.predict_log:
                 output.exp_()
