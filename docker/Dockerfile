@@ -9,6 +9,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         gnupg                       \
         libboost-all-dev            \
         libsqlite3-dev              \
+        libtorch-dev                \
         locales                     \
         man                         \
         nasm                        \

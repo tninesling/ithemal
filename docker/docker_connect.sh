@@ -67,4 +67,4 @@ if [[ -z "${CONTAINER}" ]]; then
     docker exec -u ithemal "${CONTAINER}" bash -lc 'ithemal/build_all.sh'
 fi
 
-docker exec -u "${USER}" -it "${CONTAINER}" /home/ithemal/ithemal/aws/aws_utils/tmux_attach.sh
+docker exec -u "${USER}" -it "${CONTAINER}" /bin/bash # /home/ithemal/ithemal/aws/aws_utils/tmux_attach.sh
