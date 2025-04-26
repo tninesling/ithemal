@@ -165,27 +165,7 @@ def dump_model_and_data(model, data, fname):
 
 def load_model_and_data(fname):
     # type: (str) -> (md.AbstractGraphMode, dt.DataCost)
-
-    try:
-        # Try loading with weights_only=True for PyTorch 2+
-        dump = torch.load(fname, weights_only=True, map_location=torch.device('cpu'))
-    except Exception as e:
-        # Monkey patch LSTM to handle _flat_weights from PyTorch 1
-        def _getattr_hook(self, name):
-            if name == '_flat_weights':
-                return []
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
-        
-        torch.nn.modules.rnn.LSTM.__getattr__ = _getattr_hook
-        
-        try:
-            # Try loading again with complex object unpickling
-            dump = torch.load(fname, map_location=torch.device('cpu'))
-        except Exception as e2:
-            print(f"Failed to load model in second attempt; initial error: {e}")
-            raise e2
-
-
+    dump = torch.load(fname)
     data = dt.DataInstructionEmbedding()
     data.read_meta_data()
     data.load_dataset_params(dump.dataset_params)
