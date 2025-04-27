@@ -78,6 +78,8 @@ def predict_raw(model_arg, data_arg, verbose, parallel):
 
     def queue_worker():
         (model, data) = load_model_and_data(model_arg, data_arg)
+        if torch.cuda.is_available():
+            model = model.cuda()
         while True:
             line = input_q.get()
             if line is None:

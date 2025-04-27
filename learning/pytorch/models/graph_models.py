@@ -49,6 +49,9 @@ class AbstractGraphModule(nn.Module):
             print('embedding not selected...')
             exit()
 
+        if torch.cuda.is_available():
+            self.final_embeddings = self.final_embeddings.cuda()
+
     def dump_shared_params(self):
         # type: () -> Dict[str, Any]
         return model_utils.dump_shared_params(self)

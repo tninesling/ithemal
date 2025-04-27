@@ -48,6 +48,12 @@ Once you have downloaded one of the models from the previous section, and you ha
 python learning/pytorch/ithemal/predict.py --verbose --model predictor.dump --model-data trained.mdl --file a.out
 ```
 
+The predictor can also be run with a hex-encoded version of a block with the `--raw-stdin` flag. For example, run an example block from [Bhive](https://github.com/ithemal/bhive/blob/master/benchmark/throughput/hsw.csv) as:
+```bash
+echo 4183ff0119c083e00885c98945c4b8010000000f4fc139c2 | \
+   python learning/pytorch/ithemal/predict.py --verbose --model predictor.dump --model-data trained.mdl --raw-stdin
+```
+
 ## Training
 
 ### Data
