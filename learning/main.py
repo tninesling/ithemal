@@ -188,12 +188,7 @@ def train(block_csv, predictor_file, model_file, num_epochs=100, tolerance=10):
     )
 
     model = ithemal_utils.load_model(params, embedding)
-
-    # model = ithemal_utils.md.RNN(rnn_params)
-    # model.set_learnable_embedding(mode=params.embed_mode, dictsize=628)
-
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
