@@ -33,6 +33,7 @@ class DataInstructionEmbedding(Data):
         self.token_to_hot_idx = {}
         self.hot_idx_to_token = {}
         self.data = []
+        self.mem_start = 0
 
     def dump_dataset_params(self):
         return (self.token_to_hot_idx, self.hot_idx_to_token)

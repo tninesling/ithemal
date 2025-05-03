@@ -98,3 +98,12 @@ Finally, the resulting trained models and predictor dumps (for use in the comman
 # Data Collection
 
 This repo contains a preliminary version of our data collection infrastructure; we plan on releasing a more detailed description and infrastructure soon.
+
+# 2025 Training Update
+
+In order to better utilize available hardware, we have upgraded to a CUDA-enabled version of PyTorch.
+This change requires reworking the training setup to get data to the GPU as quickly as possible.
+
+Assuming you have the Bhive CSVs available locally, you can run the `learning/main.py` script to begin
+training, followed by a test with the remaining 20% of the data. The data loaders run subprocesses to
+execute the local tokenizer on each block's code, and the embedding canonicalizes the tokenized block.
