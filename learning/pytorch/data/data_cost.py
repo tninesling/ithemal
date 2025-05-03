@@ -51,6 +51,10 @@ class DataInstructionEmbedding(Data):
                 self.hot_idx_to_token[self.token_to_hot_idx[elem]] = elem
             return self.token_to_hot_idx[elem]
 
+        if len(self.token_to_hot_idx) > 0:
+            raise ValueError('Already have token_to_hot_idx mapping!')
+        hot_idxify('<PAD>') # Fake token for padding
+
         if progress:
             iterator = tqdm(self.raw_data)
         else:
