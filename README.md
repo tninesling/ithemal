@@ -107,3 +107,17 @@ This change requires reworking the training setup to get data to the GPU as quic
 Assuming you have the Bhive CSVs available locally, you can run the `learning/main.py` script to begin
 training, followed by a test with the remaining 20% of the data. The data loaders run subprocesses to
 execute the local tokenizer on each block's code, and the embedding canonicalizes the tokenized block.
+
+Inside `main.py`, update the main block to use the bhive file you want.
+```
+if __name__ == "__main__":
+    block_csv = "hsw.csv" # <- this is Haswell
+    predictor_file = "hsw_predictor.dump"
+    model_file = "hsw_predictor.mdl"
+    tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
+    tolerance = 25
+
+    # ...
+```
+
+The predictor, model, and tokenized blocks files will be empty on the first run. Intermediate stages of the model will be saved during execution.
