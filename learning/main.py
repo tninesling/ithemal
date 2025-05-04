@@ -1,15 +1,16 @@
-from contextlib import contextmanager
+import concurrent
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing
 import os
 import pandas as pd
+import pickle
 import subprocess
-import time
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
-import xml.etree.ElementTree as ET
+from tqdm import tqdm
 import warnings
 
-import common_libs.utilities as ut
-from pytorch.data.data_cost import DataInstructionEmbedding, DataItem
+from pytorch.data.data_cost import DataInstructionEmbedding
 from pytorch.ithemal import ithemal_utils
 
 _TOKENIZER = os.path.join(
@@ -18,55 +19,167 @@ _TOKENIZER = os.path.join(
 _fake_intel = "\n" * 500
 
 
-def datum_of_code(data, block_hex):
-    xml = subprocess.check_output([_TOKENIZER, block_hex, "--token"])
+def tokenize_single(hex_str):
+    return subprocess.check_output([_TOKENIZER, hex_str, "--token"])
+
+
+def datum_of_code(data: DataInstructionEmbedding, block_hex):
+    xml = tokenize_single(block_hex)
     data.raw_data = [(-1, -1, _fake_intel, xml)]
     data.data = []
     data.prepare_data(fixed=False, progress=False)
     return data.data[-1]
 
 
+def is_valid_hex(s):
+    # Check that s is a string and fits hexadecimal format
+    if not isinstance(s, str):
+        return False
+    try:
+        int(s, 16)
+        return True
+    except ValueError:
+        return False
+
+
 class BasicBlockCSV(Dataset):
     def __init__(self, csv_file, embedder):
-        df = pd.read_csv(
+        self.df = pd.read_csv(
             csv_file,
             header=None,
             sep=r"\s*,\s*",
             engine="python",
             names=["hex", "throughput"],
         )
-
-        def is_valid_hex(s):
-            # Check that s is a string and fits hexadecimal format
-            if not isinstance(s, str):
-                return False
-            try:
-                int(s, 16)
-                return True
-            except ValueError:
-                return False
-
-        # Filter the DataFrame to only include rows with valid hex strings
-        df = df[df["hex"].apply(is_valid_hex)]
-
-        self.blocks = df
         self.embedder = embedder
 
+    def save(self, filepath):
+        data_to_save = {
+            "dataframe": self.df,
+            "embedder_data": self.embedder.data,
+            "embedder_raw_data": self.embedder.raw_data,
+            "token_to_hot_idx": self.embedder.token_to_hot_idx,
+            "hot_idx_to_token": self.embedder.hot_idx_to_token,
+            "mem_start": self.embedder.mem_start,
+        }
+        with open(filepath, "wb") as f:
+            pickle.dump(data_to_save, f)
+
+    @classmethod
+    def load(cls, filepath, embedder=None):
+        # Load saved data
+        with open(filepath, "rb") as f:
+            saved_data = pickle.load(f)
+
+        if embedder is None:
+            embedder = DataInstructionEmbedding()
+
+        instance = cls.__new__(cls)
+        instance.df = saved_data["dataframe"]
+        instance.embedder = embedder
+
+        instance.embedder.data = saved_data["embedder_data"]
+        instance.embedder.raw_data = saved_data["embedder_raw_data"]
+        instance.embedder.token_to_hot_idx = saved_data["token_to_hot_idx"]
+        instance.embedder.hot_idx_to_token = saved_data["hot_idx_to_token"]
+        instance.embedder.mem_start = saved_data["mem_start"]
+
+        return instance
+
+    """ Dataset related methods """
+
     def __len__(self):
-        return len(self.blocks)
+        return len(self.embedder.data)
 
     def __getitem__(self, idx):
-        hex, throughput = self.blocks.iloc[idx, :]
-        datum = datum_of_code(self.embedder, hex)
-        return {"datum": datum, "throughput": throughput}
+        throughput = self.df["throughput"].iloc[idx]
+        block = self.embedder.data[idx]
+        return {"block": block, "throughput": throughput}
 
     @staticmethod
     def collate_fn(batch):
-        data = [item["datum"] for item in batch]
-        throughputs = torch.tensor(
+        blocks = [item["block"] for item in batch]
+        throughput = torch.tensor(
             [item["throughput"] for item in batch], dtype=torch.float32
         )
-        return {"datum": data, "throughput": throughputs}
+        return {"blocks": blocks, "throughput": throughput}
+
+    """ Builder methods """
+
+    def remove_invalid_hex(self):
+        print("Removing invalid hex...")
+        self.df = self.df[self.df["hex"].apply(is_valid_hex)]
+        return self
+
+    def tokenize_hex(self):
+        print("Tokenizing hex...")
+
+        # Determine number of workers - use max(1, available_cores - 1) to avoid overloading the system
+        num_workers = max(1, multiprocessing.cpu_count() - 1)
+        print(f"Using {num_workers} workers for tokenization.")
+
+        # Create list to store results in the correct order
+        results = [None] * len(self.df)
+
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            # Submit all tasks and get futures
+            hex_values = self.df["hex"].tolist()
+            futures = {
+                executor.submit(tokenize_single, hex_val): i
+                for i, hex_val in enumerate(hex_values)
+            }
+
+            # Process results as they complete with progress bar
+            with tqdm(total=len(futures), desc="Tokenizing") as pbar:
+                for future in concurrent.futures.as_completed(futures):
+                    idx = futures[future]
+                    try:
+                        results[idx] = future.result()
+                    except Exception as e:
+                        print(f"Error tokenizing entry {idx}: {e}")
+                        # Set a default value or handle the error appropriately
+                        results[idx] = None
+                    pbar.update(1)
+
+        # Update the dataframe with tokenized results
+        self.df["tokenized"] = results
+        return self
+
+    def load_into_embedder(self):
+        print("Loading into embedder...")
+        self.embedder.raw_data = [
+            (-1, -1, _fake_intel, x) for x in self.df["tokenized"].tolist()
+        ]
+        return self
+
+    def process_into_blocks(self):
+        print("Processing into blocks...")
+        self.embedder.data = []
+        self.embedder.prepare_data(fixed=False, progress=True)
+        return self
+
+    def create_loaders(self):
+        train_size = int(0.8 * len(self))  # 80% for training
+        test_size = len(self) - train_size  # rest for testing
+        train_dataset, test_dataset = random_split(self, [train_size, test_size])
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_size=64,
+            shuffle=True,
+            collate_fn=BasicBlockCSV.collate_fn,  # custom collate allows returning non-tensors from batch
+            num_workers=16,
+            pin_memory=True,
+        )
+        test_dataloader = DataLoader(
+            test_dataset,
+            batch_size=64,
+            shuffle=False,
+            collate_fn=BasicBlockCSV.collate_fn,
+            num_workers=8,
+            pin_memory=True,
+        )
+
+        return (train_dataloader, test_dataloader)
 
 
 def load_model_and_data(model_file, model_data_file):
@@ -104,35 +217,27 @@ def save_checkpoint(model, optimizer, epoch, batch_num, filename, **rest):
     torch.save(state_dict, filename)
 
 
-def load_block_csv(block_csv, embedding):
+def load_block_csv(block_csv, embedding, tokenized_blocks_file):
     blocks = os.path.join(os.environ["ITHEMAL_HOME"], block_csv)
     if not os.path.exists(blocks):
         raise FileNotFoundError(
             f"File {blocks} does not exist. Please ensure the path is correct."
         )
-    dataset = BasicBlockCSV(blocks, embedding)
 
-    train_size = int(0.8 * len(dataset))  # 80% for training
-    test_size = len(dataset) - train_size  # rest for testing
-    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
-    train_dataloader = DataLoader(
-        train_dataset,
-        batch_size=64,
-        shuffle=True,
-        collate_fn=BasicBlockCSV.collate_fn,  # custom collate allows returning objects that aren't tensors (we need DataItem)
-        num_workers=16,
-        pin_memory=True,
-    )
-    test_dataloader = DataLoader(
-        test_dataset,
-        batch_size=64,
-        shuffle=False,
-        collate_fn=BasicBlockCSV.collate_fn,
-        num_workers=8,
-        pin_memory=True,
-    )
+    dataset = None
+    if os.path.exists(tokenized_blocks_file):
+        print(f"Loading dataset from {tokenized_blocks_file}...")
+        dataset = BasicBlockCSV.load(tokenized_blocks_file, embedder=embedding)
+    else:
+        dataset = BasicBlockCSV(blocks, embedding)
+        dataset.remove_invalid_hex()
+        dataset.tokenize_hex()
+        dataset.load_into_embedder()
+        dataset.process_into_blocks()
+        dataset.save(tokenized_blocks_file)
+        print(f"Dataset saved to {tokenized_blocks_file}.")
 
-    return (train_dataloader, test_dataloader)
+    return dataset.create_loaders()
 
 
 def normalized_mse_loss(output, target):
@@ -141,10 +246,11 @@ def normalized_mse_loss(output, target):
     return loss.mean()
 
 
-def train(block_csv, predictor_file, model_file, num_epochs=100, tolerance=10):
+def train(block_csv, predictor_file, model_file, tokenized_blocks_file):
     embedding = DataInstructionEmbedding()
-    (train_dataloader, _test_dataloader) = load_block_csv(block_csv, embedding)
-    batches_per_epoch = len(train_dataloader) // num_epochs
+    (train_dataloader, _test_dataloader) = load_block_csv(
+        block_csv, embedding, tokenized_blocks_file
+    )
 
     embed_file = os.path.join(
         os.environ["ITHEMAL_HOME"],
@@ -192,28 +298,22 @@ def train(block_csv, predictor_file, model_file, num_epochs=100, tolerance=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    for i, batch in enumerate(train_dataloader):
-        data, throughputs = batch["datum"], batch["throughput"].to(device)
+    training_progress = tqdm(train_dataloader, desc="Training")
+    for batch in training_progress:
+        blocks, throughputs = batch["blocks"], batch["throughput"].to(device)
         optimizer.zero_grad()
 
-        batch_correct = torch.tensor(0.0, device=device)
         batch_loss = torch.tensor(0.0, device=device)
-        for datum, throughput in zip(data, throughputs):
+        for block, throughput in zip(blocks, throughputs):
             # Each datum is a block with a list of instructions
-            output = model(datum)
+            output = model(block)
             loss = normalized_mse_loss(output, throughput)
             batch_loss += loss
             loss.backward()
             optimizer.step()
 
-            diff = output - throughput
-            is_correct = torch.abs(diff * 100 / (throughput + 1e-3)) < tolerance
-            batch_correct += torch.sum(is_correct).item()
-
-        if i % batches_per_epoch == 0:
-            print(
-                f"Epoch {i // batches_per_epoch} (Batch {i}/{len(train_dataloader)}) | Loss: {batch_loss.item():.4f}, Batch Accuracy: {batch_correct.item() / len(data) * 100:.2f}%"
-            )
+        if batch_loss.item():
+            training_progress.set_postfix({"Loss": batch_loss.item()})
 
     print("Training complete.")
     ithemal_utils.dump_model_and_data(model, embedding, predictor_file)
@@ -221,10 +321,17 @@ def train(block_csv, predictor_file, model_file, num_epochs=100, tolerance=10):
     print("Model and data saved successfully.")
 
 
-def test(block_csv, predictor_file, model_file, num_epochs=100, tolerance=10):
+def test(
+    block_csv,
+    predictor_file,
+    model_file,
+    tokenized_blocks_file,
+    tolerance=25,
+):
     (model, embedding) = load_model_and_data(predictor_file, model_file)
-    (_train_dataloader, test_dataloader) = load_block_csv(block_csv, embedding)
-    batches_per_epoch = len(test_dataloader) // num_epochs
+    (_train_dataloader, test_dataloader) = load_block_csv(
+        block_csv, embedding, tokenized_blocks_file
+    )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.eval()
@@ -233,24 +340,19 @@ def test(block_csv, predictor_file, model_file, num_epochs=100, tolerance=10):
     with torch.no_grad():
         correct = torch.tensor(0.0, device=device)
         total = torch.tensor(0.0, device=device)
-        for i, batch in enumerate(test_dataloader):
-            data, throughputs = batch["datum"], batch["throughput"].to(device)
-            for datum, throughput in zip(data, throughputs):
-                output = model(datum)
+        testing_progress = tqdm(test_dataloader, desc="Testing")
+        for batch in testing_progress:
+            blocks, throughputs = batch["blocks"], batch["throughput"].to(device)
+            for block, throughput in zip(blocks, throughputs):
+                output = model(block)
 
                 diff = output - throughput
                 is_correct = torch.abs(diff * 100 / (throughput + 1e-3)) < tolerance
                 correct += torch.sum(is_correct).item()
                 total += 1
 
-            if i % batches_per_epoch == 0:
-                accuracy = correct.item() / total.item() if total.item() > 0 else 0
-                print(
-                    f"Epoch {i // batches_per_epoch} (Batch {i}/{len(test_dataloader)}) | Accuracy: {accuracy * 100:.2f}%"
-                )
-
-        accuracy = correct.item() / total.item() if total.item() > 0 else 0
-        print(f"Final Accuracy: {accuracy * 100:.2f}%")
+            accuracy = correct.item() / total.item() if total.item() > 0 else 0
+            testing_progress.set_postfix({"Accuracy": f"{accuracy * 100:.2f}%"})
 
 
 def predict(block_hex, predictor_file, model_file):
@@ -265,50 +367,39 @@ def predict(block_hex, predictor_file, model_file):
         print(f"Predicted throughput for block {block_hex}: {output.item():.4f}")
 
 
-@contextmanager
-def timer():
-    start_time = time.time()
-    try:
-        yield
-    finally:
-        end_time = time.time()
-        print(f"Elapsed time: {end_time - start_time:.2f} seconds")
-
-
 if __name__ == "__main__":
     block_csv = "hsw.csv"
     predictor_file = "hsw_predictor.dump"
     model_file = "hsw_predictor.mdl"
+    tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
     tolerance = 25
 
-    print(f"Config: {block_csv}, {predictor_file}, {model_file}, tolerance={tolerance}")
+    print(
+        f"Config: {block_csv}, {predictor_file}, {model_file}, {tokenized_blocks_file} tolerance={tolerance}"
+    )
 
     print("Begin training...")
-    with timer():
-        train(
-            block_csv,
-            predictor_file,
-            model_file,
-            num_epochs=20,
-            tolerance=tolerance,
-        )
+    train(
+        block_csv,
+        predictor_file,
+        model_file,
+        tokenized_blocks_file,
+    )
 
     print("Begin testing...")
-    with timer():
-        test(
-            block_csv,
-            predictor_file,
-            model_file,
-            num_epochs=10,
-            tolerance=tolerance,
-        )
+    test(
+        block_csv,
+        predictor_file,
+        model_file,
+        tokenized_blocks_file,
+        tolerance=tolerance,
+    )
 
     """
     print("Begin prediction...")
-    with timer():
-        predict(
-            block_hex="4183ff0119c083e00885c98945c4b8010000000f4fc139c2",
-            predictor_file="skl_predictor.dump",
-            model_file="skl_predictor.mdl",
-        )
+    predict(
+        block_hex="4183ff0119c083e00885c98945c4b8010000000f4fc139c2",
+        predictor_file="skl_predictor.dump",
+        model_file="skl_predictor.mdl",
+    )
     """
