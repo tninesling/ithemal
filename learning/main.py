@@ -9,6 +9,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 from tqdm import tqdm
 import warnings
+import matplotlib.pyplot as plt
 
 from pytorch.data.data_cost import DataInstructionEmbedding
 from pytorch.ithemal import ithemal_utils
@@ -245,31 +246,35 @@ def normalized_mse_loss(output, target):
     loss = torch.sqrt(loss) / (target + 1e-3)
     return loss.mean()
 
+def check_correct(outputs, throughput, tolerance=25):
+    return torch.abs((outputs - throughput) * 100 / (throughput + 1e-3)) < tolerance
 
-def train(block_csv, predictor_file, model_file, tokenized_blocks_file):
+def plot(accuracies, losses):
+    _fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+    axs[0].plot(accuracies)
+    axs[0].set_title("Accuracy")
+    axs[0].set_xlabel("Batch")
+    axs[0].set_ylabel("Accuracy (%)")
+
+    axs[1].plot(losses)
+    axs[1].set_title("Loss")
+    axs[1].set_xlabel("Batch")
+    axs[1].set_ylabel("Loss")
+
+    plt.tight_layout()
+    plt.savefig("training_metrics.png")
+
+def train(block_csv, predictor_file, model_file, tokenized_blocks_file, num_epochs, tolerance):
     embedding = DataInstructionEmbedding()
     (train_dataloader, _test_dataloader) = load_block_csv(
         block_csv, embedding, tokenized_blocks_file
     )
 
-    embed_file = os.path.join(
-        os.environ["ITHEMAL_HOME"],
-        "learning",
-        "pytorch",
-        "inputs",
-        "embeddings",
-        "code_delim.emb",
-    )
-    if not os.path.exists(embed_file):
-        raise FileNotFoundError(
-            f"Embedding file {embed_file} does not exist. Please ensure the path is correct."
-        )
-
     # Params used by training invocation script from README
     params = ithemal_utils.BaseParameters(
-        data="hsw.csv",
+        data=block_csv,
         embed_mode="none",
-        embed_file=embed_file,  # TODO: How do we load that into DataInstructionEmbedding?
+        embed_file=None,
         random_edge_freq=0.0,
         predict_log=False,
         no_residual=False,
@@ -298,27 +303,43 @@ def train(block_csv, predictor_file, model_file, tokenized_blocks_file):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    training_progress = tqdm(train_dataloader, desc="Training")
-    for batch in training_progress:
-        blocks, throughputs = batch["blocks"], batch["throughput"].to(device)
-        optimizer.zero_grad()
+    accuracies = []
+    losses = []
 
-        batch_loss = torch.tensor(0.0, device=device)
-        for block, throughput in zip(blocks, throughputs):
-            # Each datum is a block with a list of instructions
-            output = model(block)
-            loss = normalized_mse_loss(output, throughput)
-            batch_loss += loss
-            loss.backward()
-            optimizer.step()
+    correct = torch.tensor(0.0, device=device)
+    total = torch.tensor(0.0, device=device)
+    for epoch in range(num_epochs):
+        training_progress = tqdm(
+            train_dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}"
+        )
+        for batch in training_progress:
+            blocks, throughputs = batch["blocks"], batch["throughput"].to(device)
+            optimizer.zero_grad()
 
-        if batch_loss.item():
-            training_progress.set_postfix({"Loss": batch_loss.item()})
+            batch_loss = torch.tensor(0.0, device=device)
+            for block, throughput in zip(blocks, throughputs):
+                # Each datum is a block with a list of instructions
+                output = model(block)
+                loss = normalized_mse_loss(output, throughput)
+                batch_loss += loss
+                loss.backward()
+                optimizer.step()
+
+                correct += check_correct(output, throughput, tolerance=tolerance).sum()
+            
+            total += len(blocks)
+            accuracy = correct.item() / total.item() if total.item() > 0 else 0
+            accuracies.append(accuracy * 100)
+            losses.append(batch_loss.item())
+            if batch_loss.item():
+                training_progress.set_postfix({"Loss": batch_loss.item()})
+
 
     print("Training complete.")
     ithemal_utils.dump_model_and_data(model, embedding, predictor_file)
     save_checkpoint(model, optimizer, epoch="final", batch_num=0, filename=model_file)
     print("Model and data saved successfully.")
+    plot(accuracies, losses)
 
 
 def test(
@@ -345,10 +366,7 @@ def test(
             blocks, throughputs = batch["blocks"], batch["throughput"].to(device)
             for block, throughput in zip(blocks, throughputs):
                 output = model(block)
-
-                diff = output - throughput
-                is_correct = torch.abs(diff * 100 / (throughput + 1e-3)) < tolerance
-                correct += torch.sum(is_correct).item()
+                correct += check_correct(output, throughput, tolerance=tolerance).sum()
                 total += 1
 
             accuracy = correct.item() / total.item() if total.item() > 0 else 0
@@ -372,10 +390,11 @@ if __name__ == "__main__":
     predictor_file = "hsw_predictor.dump"
     model_file = "hsw_predictor.mdl"
     tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
+    num_epochs = 1
     tolerance = 25
 
     print(
-        f"Config: {block_csv}, {predictor_file}, {model_file}, {tokenized_blocks_file} tolerance={tolerance}"
+        f"Config: {block_csv}, {predictor_file}, {model_file}, {tokenized_blocks_file}, num_epochs={num_epochs}, tolerance={tolerance}"
     )
 
     print("Begin training...")
@@ -384,6 +403,8 @@ if __name__ == "__main__":
         predictor_file,
         model_file,
         tokenized_blocks_file,
+        num_epochs=num_epochs,
+        tolerance=tolerance,
     )
 
     print("Begin testing...")

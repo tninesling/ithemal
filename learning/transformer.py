@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
-from main import BasicBlockCSV, normalized_mse_loss, save_checkpoint
+from main import BasicBlockCSV, check_correct, plot, save_checkpoint
 from pytorch.data.data_cost import DataInstructionEmbedding
 from pytorch.ithemal import ithemal_utils
 
@@ -76,15 +76,28 @@ class FlattenedBasicBlockCSV(BasicBlockCSV):
 
 
 class TransformerThroughputPredictor(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim):
+    def __init__(
+        self,
+        vocab_size,
+        embedding_dim,
+        hidden_dim,
+        nhead=8,
+        num_layers=6,
+        dtype=torch.float32,
+    ):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.embedding = nn.Embedding(vocab_size, embedding_dim, dtype=dtype)
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embedding_dim, nhead=8, dim_feedforward=hidden_dim
+            d_model=embedding_dim,
+            nhead=nhead,
+            dim_feedforward=hidden_dim,
+            dtype=dtype,
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.regression = nn.Sequential(
-            nn.Linear(embedding_dim, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 1)
+            nn.Linear(embedding_dim, hidden_dim, dtype=dtype),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1, dtype=dtype),
         )
 
     def forward(self, x, attention_mask=None):
@@ -95,7 +108,7 @@ class TransformerThroughputPredictor(nn.Module):
             encoded = self.encoder(
                 embedded.transpose(0, 1),
                 src_key_padding_mask=src_key_padding_mask,
-            ).transpose(0, 1) 
+            ).transpose(0, 1)
         else:
             encoded = self.encoder(embedded.transpose(0, 1)).transpose(0, 1)
 
@@ -103,22 +116,33 @@ class TransformerThroughputPredictor(nn.Module):
             mask_expanded = attention_mask.unsqueeze(-1).expand_as(encoded)
             sum_embeddings = (encoded * mask_expanded).sum(dim=1)
             count_tokens = attention_mask.sum(dim=1, keepdim=True)
-            pooled = sum_embeddings / count_tokens 
+            pooled = sum_embeddings / count_tokens
         else:
             pooled = encoded.mean(dim=1)
 
         throughput = self.regression(pooled)
-        return throughput.squeeze(-1) 
+        return throughput.squeeze(-1)
 
+
+def normalized_mse_loss(output, target, eps=1e-8):
+    '''
+    Normalized MSE similar to the one in [main.py](./main.py), but aiming for better
+    numerical stability.
+    '''
+    squared_diff = (output - target) ** 2
+    normalizer = torch.abs(target) + eps
+    normalized_loss = torch.sqrt(squared_diff + eps) / normalizer
+    return normalized_loss.mean()
 
 if __name__ == "__main__":
     csv_file = "hsw.csv"
     tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
-    predictor_file = "hsw_transformer_predictor.pkl"
-    model_file = "hsw_transformer_model.pkl"
+    predictor_file = "hsw_tsf_predictor.pkl"
+    model_file = "hsw_tsf_model.pkl"
+    num_epochs = 5
     tolerance = 25
 
-    csv = os.path.join(os.environ["ITHEMAL_HOME"], "hsw.csv")
+    csv = os.path.join(os.environ["ITHEMAL_HOME"], csv_file)
     if not os.path.exists(csv):
         raise FileNotFoundError(
             f"File {csv} does not exist. Please ensure the path is correct."
@@ -143,29 +167,49 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+
     model = TransformerThroughputPredictor(
-        vocab_size=len(embedder.token_to_hot_idx), embedding_dim=256, hidden_dim=256
+        vocab_size=len(embedder.token_to_hot_idx),
+        embedding_dim=256,
+        hidden_dim=256,
+        nhead=8,
+        num_layers=6,
+        dtype=torch.float32,
     ).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9, weight_decay=0.01
+    )
 
-    batch_tqdm = tqdm(train_loader, desc="Training")
-    for batch in batch_tqdm:
-        instrs = batch["instrs"].to(device)
-        attn_masks = batch["attn_masks"].to(device)
-        throughput = batch["throughput"].to(device)
+    accuracies = []
+    losses = []
 
-        # Forward pass
-        optimizer.zero_grad()
-        outputs = model(instrs, attn_masks)
-        loss = normalized_mse_loss(outputs, throughput)
+    correct = torch.tensor(0, device=device)
+    total = torch.tensor(0, device=device)
+    for epoch in range(num_epochs):
+        model.train()
+        batch_tqdm = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")
+        for batch in batch_tqdm:
+            instrs = batch["instrs"].to(device)
+            attn_masks = batch["attn_masks"].to(device)
+            throughput = batch["throughput"].to(device)
 
-        # Backward pass and optimization
-        loss.backward()
-        optimizer.step()
+            optimizer.zero_grad()
+            outputs = model(instrs, attn_masks)
+            loss = normalized_mse_loss(outputs, throughput, eps=1e-3)
+            loss.backward()
+            # Try to prevent exploding gradients
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
 
-        batch_tqdm.set_postfix({"Loss": loss.item()})
+            correct += check_correct(outputs, throughput, tolerance).sum()
+            total += len(outputs)
+            accuracies.append(correct.item() / total.item() * 100)
+            losses.append(loss.item())
+            batch_tqdm.set_postfix({"Loss": loss.item(), "Acc": accuracies[-1]})
 
     print("Training complete.")
+    plot(accuracies, losses)
+
     ithemal_utils.dump_model_and_data(model, embedder, predictor_file)
     save_checkpoint(model, optimizer, epoch="final", batch_num=0, filename=model_file)
     print("Model and data saved successfully.")
@@ -181,10 +225,7 @@ if __name__ == "__main__":
             throughput = batch["throughput"].to(device)
             outputs = model(instrs, attn_masks)
 
-            is_correct = (
-                torch.abs((outputs - throughput) * 100 / (throughput + 1e-3)) < tolerance
-            )  # correct if within 25%
-            correct += is_correct.sum()
+            correct += check_correct(outputs, throughput, tolerance).sum()
             total += len(outputs)
             batch_tqdm.set_postfix({"Accuracy": correct.item() / total.item() * 100})
 
