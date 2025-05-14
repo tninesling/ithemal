@@ -125,14 +125,15 @@ class TransformerThroughputPredictor(nn.Module):
 
 
 def normalized_mse_loss(output, target, eps=1e-8):
-    '''
+    """
     Normalized MSE similar to the one in [main.py](./main.py), but aiming for better
     numerical stability.
-    '''
+    """
     squared_diff = (output - target) ** 2
     normalizer = torch.abs(target) + eps
     normalized_loss = torch.sqrt(squared_diff + eps) / normalizer
     return normalized_loss.mean()
+
 
 if __name__ == "__main__":
     csv_file = "hsw.csv"
@@ -149,14 +150,13 @@ if __name__ == "__main__":
         )
 
     embedder = DataInstructionEmbedding()
-    blocks = FlattenedBasicBlockCSV(csv, embedder)
 
     dataset = None
     if os.path.exists(tokenized_blocks_file):
         print(f"Loading dataset from {tokenized_blocks_file}...")
         dataset = FlattenedBasicBlockCSV.load(tokenized_blocks_file, embedder)
     else:
-        dataset = FlattenedBasicBlockCSV(blocks, embedder)
+        dataset = FlattenedBasicBlockCSV(csv, embedder)
         dataset.remove_invalid_hex()
         dataset.tokenize_hex()
         dataset.load_into_embedder()
