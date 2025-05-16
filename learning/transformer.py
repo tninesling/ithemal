@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+import argparse
 
 from main import (
     BasicBlockCSV,
@@ -142,34 +143,52 @@ def normalized_mse_loss(output, target, eps=1e-8):
     return normalized_loss.mean()
 
 
-def predict(block_hex, predictor_file, model_file):
+def predict(block_csv, predictor_file, model_file):
+    with open(block_csv, "r") as f:
+        code_hashes = [l.split(',')[0] for l in f.read().splitlines()]
+
+    if not code_hashes:
+        print("Error: block_csv arg is required in predict mode.")
+        exit(1)
+
     (model, embedding) = load_model_and_data(predictor_file, model_file)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.eval()
 
-    datum = datum_of_code(embedding, block_hex)
-    block = list(itertools.chain(*datum.x))
+    def predict_block(block_hex, model, embedding):
+        datum = datum_of_code(embedding, block_hex)
+        block = list(itertools.chain(*datum.x))
+        with torch.no_grad():
+            block_tensor = torch.tensor(block).unsqueeze(0).to(device)
+            output = model(block_tensor)
+            return f"bt: {block_hex},{output.item():.4f}"
 
-    with torch.no_grad():
-        block = torch.tensor(block).unsqueeze(0).to(device)
-        output = model(block)
-        print(f"Predicted throughput for block {block_hex}: {output.item():.4f}")
+    for block_hex in code_hashes:
+        res = predict_block(block_hex, model, embedding)
+        print(res)
+    return
 
 
 if __name__ == "__main__":
-    csv_file = "hsw.csv"
-    tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
-    predictor_file = "hsw_tsf_predictor.pkl"
-    model_file = "hsw_tsf_model.pkl"
-    num_epochs = 5
-    tolerance = 25
+    parser = argparse.ArgumentParser(description="Transformer Ithemal Pipeline")
+    parser.add_argument("--mode", choices=["predict"], required=True, help="Mode to run: predict only for now")
+    parser.add_argument("--block_csv", type=str, default="hsw.csv", help="CSV file with blocks")
+    parser.add_argument("--predictor_file", type=str, default="hsw_tsf_predictor.pkl", help="Predictor dump file")
+    parser.add_argument("--model_file", type=str, default="hsw_tsf_model.pkl", help="Model file")
+    parser.add_argument("--num_epochs", type=int, default=5, help="Number of training epochs")
+    parser.add_argument("--tolerance", type=int, default=25, help="Tolerance for accuracy calculation")
+    args = parser.parse_args()
 
-    predict(
-        block_hex="4183ff0119c083e00885c98945c4b8010000000f4fc139c2",
-        predictor_file="skl_re_tsf_predictor.pkl",
-        model_file="skl_re_tsf_model.pkl",
-    )
+    print(f"Config: {args.block_csv}, {args.predictor_file}, {args.model_file}, {args.num_epochs}, {args.tolerance}")
+
+    if args.mode == "predict":
+        print("Begin prediction...")
+        predict(
+            block_csv=args.block_csv,
+            predictor_file=args.predictor_file,
+            model_file=args.model_file,
+        )
 
     """
     csv = os.path.join(os.environ["ITHEMAL_HOME"], csv_file)

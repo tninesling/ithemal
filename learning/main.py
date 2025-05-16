@@ -11,8 +11,6 @@ from tqdm import tqdm
 import warnings
 import matplotlib.pyplot as plt
 import argparse
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import multiprocessing
 
 from pytorch.data.data_cost import DataInstructionEmbedding
 from pytorch.ithemal import ithemal_utils
@@ -378,38 +376,28 @@ def test(
 
 def predict(block_csv, predictor_file, model_file):
     with open(block_csv, "r") as f:
-        code_hashes = [l.split(',')[0] for l in f.read().splitlines()][0:30]
+        code_hashes = [l.split(',')[0] for l in f.read().splitlines()]
 
     if not code_hashes:
         print("Error: block_csv arg is required in predict mode.")
         exit(1)
 
-    def predict_block(args):
-        (model, embedding) = load_model_and_data(predictor_file, model_file)
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
-        model.eval()
-        block_hex = args
+    (model, embedding) = load_model_and_data(predictor_file, model_file)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+
+    def predict_block(block_hex, model, embedding):
         if not is_valid_hex(block_hex):
             return f"Invalid hex: {block_hex}"
         datum = datum_of_code(embedding, block_hex)
         with torch.no_grad():
             output = model(datum)
             return f"bt: {block_hex},{output.item():.4f}"
-    
-    # num_workers = max(1, multiprocessing.cpu_count() - 1)
-    # print(f"Using {num_workers} workers for prediction.")
-    
-    # # Prepare a list of valid hexes
-    # valid_code_hashes = [h for h in code_hashes if is_valid_hex(h)]
 
-    # with ProcessPoolExecutor(max_workers=num_workers) as executor:
-    #     futures = [executor.submit(predict_block, args) for args in valid_code_hashes]
-    #     for future in as_completed(futures):
-    #         print(future.result())
-
+    # TODO: could be parallelized, but compute is already bottlenecked on consumer hardware
     for block_hex in code_hashes:
-        res = predict_block(block_hex)
+        res = predict_block(block_hex, model, embedding)
         print(res)
     return
 

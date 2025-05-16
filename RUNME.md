@@ -12,6 +12,8 @@ Make sure docker is running on your machine. Use WSL(2) if possible (cuda passth
 mohnish@DKUNMOH:~/source/repos$ git clone https://github.com/tninesling/ithemal.git
 ```
 
+NOTE: above cmd may already be done, just showing where ithemal is relative to other cmds below
+
 ```bash
 mohnish@DKUNMOH:~/source/repos$ git clone https://github.com/tninesling/bhive.git
 mohnish@DKUNMOH:~/source/repos/bhive/benchmark/throughput$ cp -r --interactive . ../../../ithemal
@@ -23,10 +25,12 @@ mohnish@DKUNMOH:~/source/repos/ithemal-models/update-2025$ cp -r --interactive .
 ```
 
 ```bash
-mohnish@DKUNMOH:~/source/repos/ithemal$ source ./.venv/bin/activate
-(.venv) mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_build.sh
-(.venv) mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_connect.sh
-(.venv) (ithemal) ithemal@0e75570f7e91:~/ithemal/timing_tools$ ./setup_tools.sh
-(.venv) (ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler$ cmake -S . -B build/ -DLLVM_DIR=../../timing_tools/llvm-build/lib/cmake/llvm
-(.venv) (ithemal) ithemal@0e75570f7e91:~/ithemal$ ./timing_tools/test_sample_hashes.sh
+mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_build.sh
+mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_connect.sh
+(ithemal) ithemal@0e75570f7e91:~/ithemal/timing_tools$ ./setup_tools.sh
+(ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler$ cmake -S . -B build/ -DLLVM_DIR=../../timing_tools/llvm-build/lib/cmake/llvm
+(ithemal) ithemal@0e75570f7e91:~/ithemal$ conda install gevent
+(ithemal) ithemal@0e75570f7e91:~/ithemal$ ./timing_tools/test_sample_hashes.sh
 ```
+
+NOTE: `./docker_build.sh`, `./setup_tools.sh`, and `./timing_tools/test_sample_hashes.sh` take a while (~20m, ~5m, ~20m respectively).
