@@ -45,31 +45,28 @@ mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_connect.sh
 - just connects up, putting you into the terminal of the docker container
 
 ```bash
+(ithemal) ithemal@0e75570f7e91:~$ cd ithemal/timing_tools
 (ithemal) ithemal@0e75570f7e91:~/ithemal/timing_tools$ ./setup_tools.sh
 ```
 
 - build llvm mainly ~5m
 
 ```bash
+(ithemal) ithemal@0e75570f7e91:~/ithemal/timing_tools$ cd ~/ithemal/data_collection/disassembler
 (ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler$ cmake -S . -B build/ -DLLVM_DIR=../../timing_tools/llvm-build/lib/cmake/llvm
 ```
 
 - cmake the disasm tool (after getting llvm dir)
 
 ```bash
+(ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler$ cd build
 (ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler/build$ make
 ```
 
 - actually build the disasm tool (after getting llvm dir)
 
 ```bash
-(ithemal) ithemal@0e75570f7e91:~/ithemal$ conda install gevent
-```
-
-- the `timing_tools/test_code_hash.py` script needs gevent but apparently wasnt included in the conda env by default
-- just add this if no records get genned for llvm-cycles tool (usually on every docker startup)
-
-```bash
+(ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler/build$ cd ~/ithemal
 (ithemal) ithemal@0e75570f7e91:~/ithemal$ ./timing_tools/test_sample_hashes.sh
 ```
 

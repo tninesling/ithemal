@@ -172,15 +172,16 @@ def predict(block_csv, predictor_file, model_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Transformer Ithemal Pipeline")
-    parser.add_argument("--mode", choices=["predict"], required=True, help="Mode to run: predict only for now")
+    parser.add_argument("--mode", choices=["train", "test", "predict"], required=True, help="Mode to run: train, test, or predict")
     parser.add_argument("--block_csv", type=str, default="hsw.csv", help="CSV file with blocks")
     parser.add_argument("--predictor_file", type=str, default="hsw_tsf_predictor.pkl", help="Predictor dump file")
     parser.add_argument("--model_file", type=str, default="hsw_tsf_model.pkl", help="Model file")
+    parser.add_argument("--tokenized_blocks_file", type=str, default="hsw_tokenized_blocks.pkl", help="Tokenized blocks pickle file")
     parser.add_argument("--num_epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--tolerance", type=int, default=25, help="Tolerance for accuracy calculation")
     args = parser.parse_args()
 
-    print(f"Config: {args.block_csv}, {args.predictor_file}, {args.model_file}, {args.num_epochs}, {args.tolerance}")
+    print(f"Config: {args.block_csv}, {args.predictor_file}, {args.model_file}, num_epochs={args.num_epochs}, tolerance={args.tolerance}")
 
     if args.mode == "predict":
         print("Begin prediction...")
@@ -189,9 +190,10 @@ if __name__ == "__main__":
             predictor_file=args.predictor_file,
             model_file=args.model_file,
         )
+        exit(0)
 
-    """
-    csv = os.path.join(os.environ["ITHEMAL_HOME"], csv_file)
+    
+    csv = os.path.join(os.environ["ITHEMAL_HOME"], args.block_csv)
     if not os.path.exists(csv):
         raise FileNotFoundError(
             f"File {csv} does not exist. Please ensure the path is correct."
@@ -200,82 +202,85 @@ if __name__ == "__main__":
     embedder = DataInstructionEmbedding()
 
     dataset = None
-    if os.path.exists(tokenized_blocks_file):
-        print(f"Loading dataset from {tokenized_blocks_file}...")
-        dataset = FlattenedBasicBlockCSV.load(tokenized_blocks_file, embedder)
+    if os.path.exists(args.tokenized_blocks_file):
+        print(f"Loading dataset from {args.tokenized_blocks_file}...")
+        dataset = FlattenedBasicBlockCSV.load(args.tokenized_blocks_file, embedder)
     else:
         dataset = FlattenedBasicBlockCSV(csv, embedder)
         dataset.remove_invalid_hex()
         dataset.tokenize_hex()
         dataset.load_into_embedder()
         dataset.process_into_blocks()
-        dataset.save(tokenized_blocks_file)
-        print(f"Dataset saved to {tokenized_blocks_file}.")
+        dataset.save(args.tokenized_blocks_file)
+        print(f"Dataset saved to {args.tokenized_blocks_file}.")
     (train_loader, test_loader) = dataset.create_loaders()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    model = TransformerThroughputPredictor(
-        vocab_size=len(embedder.token_to_hot_idx),
-        embedding_dim=256,
-        hidden_dim=256,
-        nhead=8,
-        num_layers=6,
-        dtype=torch.float32,
-    ).to(device)
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9, weight_decay=0.01
-    )
+    if args.mode == "train":
+        model = TransformerThroughputPredictor(
+            vocab_size=len(embedder.token_to_hot_idx),
+            embedding_dim=256,
+            hidden_dim=256,
+            nhead=8,
+            num_layers=6,
+            dtype=torch.float32,
+        ).to(device)
+        optimizer = torch.optim.AdamW(
+            model.parameters(), lr=0.0001, betas=(0.9, 0.98), eps=1e-9, weight_decay=0.01
+        )
 
-    accuracies = []
-    losses = []
+        accuracies = []
+        losses = []
 
-    correct = torch.tensor(0, device=device)
-    total = torch.tensor(0, device=device)
-    for epoch in range(num_epochs):
-        model.train()
-        batch_tqdm = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")
-        for batch in batch_tqdm:
-            instrs = batch["instrs"].to(device)
-            attn_masks = batch["attn_masks"].to(device)
-            throughput = batch["throughput"].to(device)
+        correct = torch.tensor(0, device=device)
+        total = torch.tensor(0, device=device)
+        for epoch in range(args.num_epochs):
+            model.train()
+            batch_tqdm = tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.num_epochs}")
+            for batch in batch_tqdm:
+                instrs = batch["instrs"].to(device)
+                attn_masks = batch["attn_masks"].to(device)
+                throughput = batch["throughput"].to(device)
 
-            optimizer.zero_grad()
-            outputs = model(instrs, attn_masks)
-            loss = normalized_mse_loss(outputs, throughput, eps=1e-3)
-            loss.backward()
-            # Try to prevent exploding gradients
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
+                optimizer.zero_grad()
+                outputs = model(instrs, attn_masks)
+                loss = normalized_mse_loss(outputs, throughput, eps=1e-3)
+                loss.backward()
+                # Try to prevent exploding gradients
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
 
-            correct += check_correct(outputs, throughput, tolerance).sum()
-            total += len(outputs)
-            accuracies.append(correct.item() / total.item() * 100)
-            losses.append(loss.item())
-            batch_tqdm.set_postfix({"Loss": loss.item(), "Acc": accuracies[-1]})
+                correct += check_correct(outputs, throughput, args.tolerance).sum()
+                total += len(outputs)
+                accuracies.append(correct.item() / total.item() * 100)
+                losses.append(loss.item())
+                batch_tqdm.set_postfix({"Loss": loss.item(), "Acc": accuracies[-1]})
 
-    print("Training complete.")
-    plot(accuracies, losses)
+        print("Training complete.")
+        plot(accuracies, losses)
 
-    ithemal_utils.dump_model_and_data(model, embedder, predictor_file)
-    save_checkpoint(model, optimizer, epoch="final", batch_num=0, filename=model_file)
-    print("Model and data saved successfully.")
+        ithemal_utils.dump_model_and_data(model, embedder, args.predictor_file)
+        save_checkpoint(model, optimizer, epoch="final", batch_num=0, filename=args.model_file)
+        print("Model and data saved successfully.")
+        exit(0)
 
-    correct = torch.tensor(0, device=device)
-    total = torch.tensor(0, device=device)
-    with torch.no_grad():
-        model.eval()
-        batch_tqdm = tqdm(test_loader, desc="Testing")
-        for batch in batch_tqdm:
-            instrs = batch["instrs"].to(device)
-            attn_masks = batch["attn_masks"].to(device)
-            throughput = batch["throughput"].to(device)
-            outputs = model(instrs, attn_masks)
+    if args.mode == "test":
+        (model, embedding) = load_model_and_data(args.predictor_file, args.model_file)
+        correct = torch.tensor(0, device=device)
+        total = torch.tensor(0, device=device)
+        with torch.no_grad():
+            model.eval()
+            batch_tqdm = tqdm(test_loader, desc="Testing")
+            for batch in batch_tqdm:
+                instrs = batch["instrs"].to(device)
+                attn_masks = batch["attn_masks"].to(device)
+                throughput = batch["throughput"].to(device)
+                outputs = model(instrs, attn_masks)
 
-            correct += check_correct(outputs, throughput, tolerance).sum()
-            total += len(outputs)
-            batch_tqdm.set_postfix({"Accuracy": correct.item() / total.item() * 100})
+                correct += check_correct(outputs, throughput, args.tolerance).sum()
+                total += len(outputs)
+                batch_tqdm.set_postfix({"Accuracy": correct.item() / total.item() * 100})
 
-    print(f"Final Accuracy: {correct.item() / total.item() * 100:.2f}%")
-    """
+        print(f"Final Accuracy: {correct.item() / total.item() * 100:.2f}%")
