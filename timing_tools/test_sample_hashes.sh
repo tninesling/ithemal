@@ -7,8 +7,8 @@ tool="llvm-cycles"
 
 arches=("haswell" "skylake" "ivybridge")
 arch_prefixes=("hsw" "skl" "ivb")
-arch_reg_mdl=("hsw.mdl" "skl_predictor.mdl" "ivb_predictor.mdl")
-arch_reg_dump=("hsw.dump" "skl_predictor.dump" "ivb_predictor.dump")
+arch_reg_mdl=("hsw.mdl" "skl.mdl" "ivb.mdl")
+arch_reg_dump=("hsw.dump" "skl.dump" "ivb.dump")
 arch_tsf_mdl=("hsw_tsf.mdl" "skl_tsf.mdl" "ivb_tsf.mdl")
 arch_tsf_dump=("hsw_tsf.dump" "skl_tsf.dump" "ivb_tsf.dump")
 
@@ -173,18 +173,17 @@ if [[ $CREATE_HASH_CSVS -eq 1 ]]; then
             python ./learning/main.py --mode predict --block_csv "$csv_sample" --predictor_file "$arch_reg_dump" --model_file "$arch_reg_mdl" \
             2>> /dev/null \
             | grep -oP "(?<=bt: ).*" >> "${dir}/hash_csvs/sampled_reg_${arch}.csv"
+            # >> "${dir}/hash_csvs/sampled_reg_${arch}.csv" \
+            # 2>> "${dir}/hash_csvs/sampled_reg_${arch}.err"
         fi
-
-        # >> "${dir}/hash_csvs/sampled_reg_${arch}.csv" \
-        # 2>> "${dir}/hash_csvs/sampled_reg_${arch}.err"
 
         if [[ $RUN_TSF -eq 1 ]]; then
             python ./learning/transformer.py --mode predict --block_csv "$csv_sample" --predictor_file "$arch_tsf_dump" --model_file "$arch_tsf_mdl" \
             2>> /dev/null \
             | grep -oP "(?<=bt: ).*" >> "${dir}/hash_csvs/sampled_tsf_${arch}.csv"
+            # >> "${dir}/hash_csvs/sampled_tsf_${arch}.csv" \
+            # 2>> "${dir}/hash_csvs/sampled_tsf_${arch}.err"
         fi
-        # >> "${dir}/hash_csvs/sampled_tsf_${arch}.csv" \
-        # 2>> "${dir}/hash_csvs/sampled_tsf_${arch}.err"
 
     done
 fi
