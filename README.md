@@ -121,3 +121,7 @@ if __name__ == "__main__":
 ```
 
 The predictor, model, and tokenized blocks files will be empty on the first run. Intermediate stages of the model will be saved during execution.
+
+# 2025 Report Update
+
+See [RUNME.md](RUNME.md)
