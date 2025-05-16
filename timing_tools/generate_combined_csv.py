@@ -28,6 +28,23 @@ for csv_name in os.listdir(hash_csvs_dir):
             code_hash, cycles = row[0], row[1]
             rows.append([code_hash, tool, arch, cycles])
 
+# add *_sample.csv files as ithemal-og, mapping arch
+arch_map = {"hsw": "haswell", "skl": "skylake", "ivb": "ivybridge"}
+root_dir = os.path.abspath(os.path.join(script_dir, os.pardir))
+for sample_csv in os.listdir(root_dir):
+    if not sample_csv.endswith('_sample.csv'):
+        continue
+    print(f"Processing {sample_csv}")
+    prefix = sample_csv.split('_')[0]
+    arch = arch_map.get(prefix, prefix)
+    with open(os.path.join(root_dir, sample_csv), newline="") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) < 2:
+                continue
+            code_hash, cycles = row[0], row[1]
+            rows.append([code_hash, "ithemal-og", arch, cycles])
+
 combined_df = pd.DataFrame(rows, columns=header)
 combined_df.to_csv(output_file, index=False)
 print(f"Combined CSV written to {output_file}")
