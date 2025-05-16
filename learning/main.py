@@ -10,6 +10,9 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from tqdm import tqdm
 import warnings
 import matplotlib.pyplot as plt
+import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
 from pytorch.data.data_cost import DataInstructionEmbedding
 from pytorch.ithemal import ithemal_utils
@@ -373,54 +376,82 @@ def test(
             testing_progress.set_postfix({"Accuracy": f"{accuracy * 100:.2f}%"})
 
 
-def predict(block_hex, predictor_file, model_file):
-    (model, embedding) = load_model_and_data(predictor_file, model_file)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
-    model.eval()
+def predict(block_csv, predictor_file, model_file):
+    with open(block_csv, "r") as f:
+        code_hashes = [l.split(',')[0] for l in f.read().splitlines()][0:30]
 
-    datum = datum_of_code(embedding, block_hex)
-    with torch.no_grad():
-        output = model(datum)
-        print(f"Predicted throughput for block {block_hex}: {output.item():.4f}")
+    if not code_hashes:
+        print("Error: block_csv arg is required in predict mode.")
+        exit(1)
+
+    def predict_block(args):
+        (model, embedding) = load_model_and_data(predictor_file, model_file)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model.to(device)
+        model.eval()
+        block_hex = args
+        if not is_valid_hex(block_hex):
+            return f"Invalid hex: {block_hex}"
+        datum = datum_of_code(embedding, block_hex)
+        with torch.no_grad():
+            output = model(datum)
+            return f"bt: {block_hex},{output.item():.4f}"
+    
+    # num_workers = max(1, multiprocessing.cpu_count() - 1)
+    # print(f"Using {num_workers} workers for prediction.")
+    
+    # # Prepare a list of valid hexes
+    # valid_code_hashes = [h for h in code_hashes if is_valid_hex(h)]
+
+    # with ProcessPoolExecutor(max_workers=num_workers) as executor:
+    #     futures = [executor.submit(predict_block, args) for args in valid_code_hashes]
+    #     for future in as_completed(futures):
+    #         print(future.result())
+
+    for block_hex in code_hashes:
+        res = predict_block(block_hex)
+        print(res)
+    return
 
 
 if __name__ == "__main__":
-    block_csv = "hsw.csv"
-    predictor_file = "hsw_predictor.dump"
-    model_file = "hsw_predictor.mdl"
-    tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
-    num_epochs = 1
-    tolerance = 25
+    parser = argparse.ArgumentParser(description="Ithemal Learning Pipeline")
+    parser.add_argument("--mode", choices=["train", "test", "predict"], required=True, help="Mode to run: train, test, or predict")
+    parser.add_argument("--block_csv", type=str, default="hsw.csv", help="CSV file with blocks")
+    parser.add_argument("--predictor_file", type=str, default="hsw_predictor.dump", help="Predictor dump file")
+    parser.add_argument("--model_file", type=str, default="hsw_predictor.mdl", help="Model file")
+    parser.add_argument("--tokenized_blocks_file", type=str, default="hsw_tokenized_blocks.pkl", help="Tokenized blocks pickle file")
+    parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs for training")
+    parser.add_argument("--tolerance", type=int, default=25, help="Tolerance for accuracy calculation")
+    args = parser.parse_args()
 
     print(
-        f"Config: {block_csv}, {predictor_file}, {model_file}, {tokenized_blocks_file}, num_epochs={num_epochs}, tolerance={tolerance}"
+        f"Config: {args.block_csv}, {args.predictor_file}, {args.model_file}, {args.tokenized_blocks_file}, num_epochs={args.num_epochs}, tolerance={args.tolerance}"
     )
 
-    print("Begin training...")
-    train(
-        block_csv,
-        predictor_file,
-        model_file,
-        tokenized_blocks_file,
-        num_epochs=num_epochs,
-        tolerance=tolerance,
-    )
-
-    print("Begin testing...")
-    test(
-        block_csv,
-        predictor_file,
-        model_file,
-        tokenized_blocks_file,
-        tolerance=tolerance,
-    )
-
-    """
-    print("Begin prediction...")
-    predict(
-        block_hex="4183ff0119c083e00885c98945c4b8010000000f4fc139c2",
-        predictor_file="skl_predictor.dump",
-        model_file="skl_predictor.mdl",
-    )
-    """
+    if args.mode == "train":
+        print("Begin training...")
+        train(
+            args.block_csv,
+            args.predictor_file,
+            args.model_file,
+            args.tokenized_blocks_file,
+            num_epochs=args.num_epochs,
+            tolerance=args.tolerance,
+        )
+    elif args.mode == "test":
+        print("Begin testing...")
+        test(
+            args.block_csv,
+            args.predictor_file,
+            args.model_file,
+            args.tokenized_blocks_file,
+            tolerance=args.tolerance,
+        )
+    elif args.mode == "predict":
+        print("Begin prediction...")
+        predict(
+            block_csv=args.block_csv,
+            predictor_file=args.predictor_file,
+            model_file=args.model_file,
+        )
