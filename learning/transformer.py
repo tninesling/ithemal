@@ -5,7 +5,14 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
-from main import BasicBlockCSV, check_correct, plot, save_checkpoint
+from main import (
+    BasicBlockCSV,
+    check_correct,
+    datum_of_code,
+    load_model_and_data,
+    plot,
+    save_checkpoint,
+)
 from pytorch.data.data_cost import DataInstructionEmbedding
 from pytorch.ithemal import ithemal_utils
 
@@ -135,6 +142,21 @@ def normalized_mse_loss(output, target, eps=1e-8):
     return normalized_loss.mean()
 
 
+def predict(block_hex, predictor_file, model_file):
+    (model, embedding) = load_model_and_data(predictor_file, model_file)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+
+    datum = datum_of_code(embedding, block_hex)
+    block = list(itertools.chain(*datum.x))
+
+    with torch.no_grad():
+        block = torch.tensor(block).unsqueeze(0).to(device)
+        output = model(block)
+        print(f"Predicted throughput for block {block_hex}: {output.item():.4f}")
+
+
 if __name__ == "__main__":
     csv_file = "hsw.csv"
     tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
@@ -143,6 +165,13 @@ if __name__ == "__main__":
     num_epochs = 5
     tolerance = 25
 
+    predict(
+        block_hex="4183ff0119c083e00885c98945c4b8010000000f4fc139c2",
+        predictor_file="skl_re_tsf_predictor.pkl",
+        model_file="skl_re_tsf_model.pkl",
+    )
+
+    """
     csv = os.path.join(os.environ["ITHEMAL_HOME"], csv_file)
     if not os.path.exists(csv):
         raise FileNotFoundError(
@@ -230,3 +259,4 @@ if __name__ == "__main__":
             batch_tqdm.set_postfix({"Accuracy": correct.item() / total.item() * 100})
 
     print(f"Final Accuracy: {correct.item() / total.item() * 100:.2f}%")
+    """
