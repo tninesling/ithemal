@@ -2,8 +2,8 @@
 
 dir=$(dirname -- "$0")
 
-# tool="llvm-cycles"
-tool="llvm-rthroughput"
+tool="llvm-cycles"
+# tool="llvm-rthroughput"
 
 arches=("haswell" "skylake" "ivybridge")
 arch_prefixes=("hsw" "skl" "ivb")
@@ -34,6 +34,16 @@ usage() {
     echo "  -h           Enable hash CSVs creation (default)"
     echo "  -H           Disable hash CSVs creation"
     echo "  -n SIZE      Set sample size (default: 10000)"
+    echo "  -l           Enable llvm hash logic (default)"
+    echo "  -L           Disable llvm hash logic"
+    echo "  -r           Enable reg model logic (default)"
+    echo "  -R           Disable reg model logic"
+    echo "  -t           Enable tsf model logic (default)"
+    echo "  -T           Disable tsf model logic"
+    echo "  -g           Enable grouped CSV generation (default)"
+    echo "  -G           Disable grouped CSV generation"
+    echo "  -f           Enable figure generation (default)"
+    echo "  -F           Disable figure generation"
     echo "  -?           Show this help message"
     exit 1
 }
@@ -42,8 +52,13 @@ usage() {
 CREATE_SAMPLES=1
 CREATE_HASH_CSVS=1
 SAMPLE_SIZE=10000
+RUN_LLVM=1
+RUN_REG=1
+RUN_TSF=1
+RUN_GROUPED_CSV=1
+RUN_FIGURE_GEN=1
 
-while getopts "sShHn:?" opt; do
+while getopts "sShHn:lLrRtTgGfF?" opt; do
     case $opt in
         s)
             CREATE_SAMPLES=1
@@ -59,6 +74,36 @@ while getopts "sShHn:?" opt; do
             ;;
         n)
             SAMPLE_SIZE="$OPTARG"
+            ;;
+        l)
+            RUN_LLVM=1
+            ;;
+        L)
+            RUN_LLVM=0
+            ;;
+        r)
+            RUN_REG=1
+            ;;
+        R)
+            RUN_REG=0
+            ;;
+        t)
+            RUN_TSF=1
+            ;;
+        T)
+            RUN_TSF=0
+            ;;
+        g)
+            RUN_GROUPED_CSV=1
+            ;;
+        G)
+            RUN_GROUPED_CSV=0
+            ;;
+        f)
+            RUN_FIGURE_GEN=1
+            ;;
+        F)
+            RUN_FIGURE_GEN=0
             ;;
         ?)
             usage
@@ -108,13 +153,14 @@ if [[ $CREATE_HASH_CSVS -eq 1 ]]; then
             shuf "$csv" | grep -v "^,.*$" | head -n "$SAMPLE_SIZE" > "$csv_sample"
         fi
 
-        # feed codeids from <arch_csv>.csv (first column) into test_code_hashes.py
-        cut -d, -f1 $csv_sample | \
-        xargs -P4 -n 256 "${dir}/test_code_hash.py" $arch $tool >> "${dir}/hash_csvs/sampled_${tool}_${arch}.csv" \
-        2>> /dev/null
+        if [[ $RUN_LLVM -eq 1 ]]; then
+            # feed codeids from <arch_csv>.csv (first column) into test_code_hashes.py
+            cut -d, -f1 $csv_sample | \
+            xargs -P4 -n 256 "${dir}/test_code_hash.py" $arch $tool >> "${dir}/hash_csvs/sampled_${tool}_${arch}.csv" \
+            2>> /dev/null
+        fi
 
         # 2>> "${dir}/hash_csvs/sampled_${tool}_${arch}.err"
-
 
         # Compare line counts between original CSV and output CSV
         orig_lines=$(wc -l < "$csv_sample")
@@ -123,22 +169,29 @@ if [[ $CREATE_HASH_CSVS -eq 1 ]]; then
         echo "Output lines in sampled_${tool}_${arch}.csv: $out_lines"
         echo "Difference: $((orig_lines - out_lines))"
 
-        python ./learning/main.py --mode predict --block_csv "$csv_sample" --predictor_file "$arch_reg_dump" --model_file "$arch_reg_mdl" \
-        2>> /dev/null \
-        | grep -oP "(?<=bt: ).*" >> "${dir}/hash_csvs/sampled_reg_${arch}.csv"
+        if [[ $RUN_REG -eq 1 ]]; then
+            python ./learning/main.py --mode predict --block_csv "$csv_sample" --predictor_file "$arch_reg_dump" --model_file "$arch_reg_mdl" \
+            2>> /dev/null \
+            | grep -oP "(?<=bt: ).*" >> "${dir}/hash_csvs/sampled_reg_${arch}.csv"
+        fi
 
         # >> "${dir}/hash_csvs/sampled_reg_${arch}.csv" \
         # 2>> "${dir}/hash_csvs/sampled_reg_${arch}.err"
 
-        python ./learning/transformer.py --mode predict --block_csv "$csv_sample" --predictor_file "$arch_tsf_dump" --model_file "$arch_tsf_mdl" \
-        2>> /dev/null \
-        | grep -oP "(?<=bt: ).*" >> "${dir}/hash_csvs/sampled_tsf_${arch}.csv"
-        
+        if [[ $RUN_TSF -eq 1 ]]; then
+            python ./learning/transformer.py --mode predict --block_csv "$csv_sample" --predictor_file "$arch_tsf_dump" --model_file "$arch_tsf_mdl" \
+            2>> /dev/null \
+            | grep -oP "(?<=bt: ).*" >> "${dir}/hash_csvs/sampled_tsf_${arch}.csv"
+        fi
         # >> "${dir}/hash_csvs/sampled_tsf_${arch}.csv" \
         # 2>> "${dir}/hash_csvs/sampled_tsf_${arch}.err"
 
     done
 fi
 
-python "${dir}/generate_combined_csv.py"
-python "${dir}/plot_grouped_cycles.py"
+if [[ $RUN_GROUPED_CSV -eq 1 ]]; then
+    python "${dir}/generate_combined_csv.py"
+fi
+if [[ $RUN_FIGURE_GEN -eq 1 ]]; then
+    python "${dir}/plot_grouped_cycles.py"
+fi

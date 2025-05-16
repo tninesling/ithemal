@@ -40,7 +40,7 @@ def time_llvm_base(arch, verbose, code):
         f.flush()
         output = subprocess.check_output([_LLVM, '-march=x86', '-mcpu={}'.format(arch), f.name]).decode('utf-8')
         if verbose:
-            print(output)
+            print(code, output)
         return output
 
 def time_llvm_cycles(arch, verbose, code):
@@ -117,7 +117,7 @@ def main():
     times = time_code_hashes(args.code_hash, timer)
 
     # mysql = subprocess.Popen(['mysql'], stdin=subprocess.PIPE)
-    speeds = [(code_hash, arch_id, kind_id, speed or 0.0) for (code_hash, speed) in list(times.items())]
+    speeds = [(code_hash, speed or 0.0) for (code_hash, speed) in list(times.items())]
     # get csv string text from speeds
     output = io.StringIO()
     writer = csv.writer(output)
