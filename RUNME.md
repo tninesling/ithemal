@@ -50,7 +50,13 @@ mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_connect.sh
 (ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler$ cmake -S . -B build/ -DLLVM_DIR=../../timing_tools/llvm-build/lib/cmake/llvm
 ```
 
-- build the disasm tool (after getting llvm dir)
+- cmake the disasm tool (after getting llvm dir)
+
+```bash
+(ithemal) ithemal@0e75570f7e91:~/ithemal/data_collection/disassembler/build$ make
+```
+
+- actually build the disasm tool (after getting llvm dir)
 
 ```bash
 (ithemal) ithemal@0e75570f7e91:~/ithemal$ conda install gevent
@@ -66,4 +72,9 @@ mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_connect.sh
 - ~20m, grabs a 10k sample (param to configure), saves out to `<arch>_sample.csv`, then runs llvm-mca, regular, transfomer on sample: combine with ithemal og data, present via graphs
 - throws intermediate csvs into `timing_tools/hash_csvs/`, and _the final outputs_ (grouped csvs, figures/plots) in `timing_tools/timing_output/`
 - NOTE: `./timing_tools/test_sample_hashes.sh -?` prints the fine grain control of each operation, allows for resuming in place of any errors (or reruns without a full recompute)
+- NOTE: should remove files in `timing_tools/hash_csvs` as needed, since all operations concatenate to the csvs
 - Already have pushed up to the repo our 3 arch sample csvs and their associated results, but running the above will regenerate a new sample -> new output.
+
+## Outputs
+
+Plots, csvs in `timing_tools/timing_output/`
