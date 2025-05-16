@@ -26,7 +26,7 @@ mohnish@DKUNMOH:~/source/repos/ithemal-models/update-2025$ cp -r --interactive .
 
 ### Functional Steps
 
-As follows is each step to run thru and get data.
+As follows is each step to run thru and get data. Make sure to read the comments below each step before executing to see if it is needed.
 
 ```bash
 mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_build.sh
@@ -64,4 +64,6 @@ mohnish@DKUNMOH:~/source/repos/ithemal/docker$ ./docker_connect.sh
 ```
 
 - ~20m, grabs a 10k sample (param to configure), saves out to `<arch>_sample.csv`, then runs llvm-mca, regular, transfomer on sample: combine with ithemal og data, present via graphs
+- throws intermediate csvs into `timing_tools/hash_csvs/`, and _the final outputs_ (grouped csvs, figures/plots) in `timing_tools/timing_output/`
 - NOTE: `./timing_tools/test_sample_hashes.sh -?` prints the fine grain control of each operation, allows for resuming in place of any errors (or reruns without a full recompute)
+- Already have pushed up to the repo our 3 arch sample csvs and their associated results, but running the above will regenerate a new sample -> new output.
