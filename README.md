@@ -108,20 +108,44 @@ Assuming you have the Bhive CSVs available locally, you can run the `learning/ma
 training, followed by a test with the remaining 20% of the data. The data loaders run subprocesses to
 execute the local tokenizer on each block's code, and the embedding canonicalizes the tokenized block.
 
-Inside `main.py`, update the main block to use the bhive file you want.
-```
+Inside `learning/main.py`, follow params in the main block to use the bhive file you want.
+```python
 if __name__ == "__main__":
-    block_csv = "hsw.csv" # <- this is Haswell
-    predictor_file = "hsw_predictor.dump"
-    model_file = "hsw_predictor.mdl"
-    tokenized_blocks_file = "hsw_tokenized_blocks.pkl"
-    tolerance = 25
+    parser = argparse.ArgumentParser(description="Ithemal Learning Pipeline")
+    parser.add_argument("--mode", choices=["train", "test", "predict"], required=True, help="Mode to run: train, test, or predict")
+    parser.add_argument("--block_csv", type=str, default="hsw.csv", help="CSV file with blocks")
+    parser.add_argument("--predictor_file", type=str, default="hsw_predictor.dump", help="Predictor dump file")
+    parser.add_argument("--model_file", type=str, default="hsw_predictor.mdl", help="Model file")
+    parser.add_argument("--tokenized_blocks_file", type=str, default="hsw_tokenized_blocks.pkl", help="Tokenized blocks pickle file")
+    parser.add_argument("--num_epochs", type=int, default=1, help="Number of epochs for training")
+    parser.add_argument("--tolerance", type=int, default=25, help="Tolerance for accuracy calculation")
+    args = parser.parse_args()
+
+    # ...
+```
+
+Same is true for `learning/transformer.py`
+
+```python
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Transformer Ithemal Pipeline")
+    parser.add_argument("--mode", choices=["predict"], required=True, help="Mode to run: predict only for now")
+    parser.add_argument("--block_csv", type=str, default="hsw.csv", help="CSV file with blocks")
+    parser.add_argument("--predictor_file", type=str, default="hsw_tsf_predictor.pkl", help="Predictor dump file")
+    parser.add_argument("--model_file", type=str, default="hsw_tsf_model.pkl", help="Model file")
+    parser.add_argument("--num_epochs", type=int, default=5, help="Number of training epochs")
+    parser.add_argument("--tolerance", type=int, default=25, help="Tolerance for accuracy calculation")
+    args = parser.parse_args()
 
     # ...
 ```
 
 The predictor, model, and tokenized blocks files will be empty on the first run. Intermediate stages of the model will be saved during execution.
 
-# 2025 Report Update
+[our ithemal-models fork](https://github.com/tninesling/ithemal-models/tree/master/update-2025) has some premade model dumps if needed (e.g. used in below evaluation).
 
-See [RUNME.md](RUNME.md)
+# 2025 Evaluation Update
+
+To actually generate reports, analysis, etc from the evaluation, see the [RUNME.md](RUNME.md) file.
+
+The current *_sample.csv files at the project root + files in the `timing_tools/timing_output` and `timing_tools/hash_csvs` are what were used in the evaluation, able to run as as with these files (again see RUNME.md above).
