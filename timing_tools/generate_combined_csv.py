@@ -7,6 +7,7 @@ hash_csvs_dir = os.path.join(script_dir, "hash_csvs")
 timing_output_dir = os.path.join(script_dir, "timing_output")
 output_file = os.path.join(timing_output_dir, "sampled_combined_hashes.csv")
 grouped_output_file = os.path.join(timing_output_dir, "sampled_combined_hashes_grouped.csv")
+accuracy_csv = os.path.join(timing_output_dir, 'tool_accuracy_table.csv')
 
 header = ["code_hash", "tool", "arch", "cycles"]
 rows = []
@@ -56,3 +57,38 @@ pivot_df.columns = [f"{tool}_cycles" for tool in pivot_df.columns]
 pivot_df.reset_index(inplace=True)
 pivot_df.to_csv(grouped_output_file, index=False)
 print(f"Grouped CSV written to {grouped_output_file}")
+
+# non og cols
+cols = [col for col in pivot_df.columns if col.endswith('_cycles') and col != 'ithemal-og_cycles']
+archs = sorted(pivot_df['arch'].unique())
+accuracy_rows = []
+for arch in archs:
+    arch_df = pivot_df[pivot_df['arch'] == arch]
+    row = [arch]
+    truth = arch_df['ithemal-og_cycles'].astype(float)
+    for col in cols:
+        local = arch_df[col].astype(float)
+        mask = (~truth.isna()) & (~local.isna())
+        # just in case nan math
+        if mask.sum() == 0:
+            acc = float('nan')
+        else:
+            acc = ((abs(local[mask] - truth[mask]) <= 0.25 * truth[mask]).sum() / mask.sum())
+        row.append(acc)
+    accuracy_rows.append(row)
+# make an append the overall row
+row = ['overall']
+truth = pivot_df['ithemal-og_cycles'].astype(float)
+for col in cols:
+    local = pivot_df[col].astype(float)
+    mask = (~truth.isna()) & (~local.isna())
+    if mask.sum() == 0:
+        acc = float('nan')
+    else:
+        acc = ((abs(local[mask] - truth[mask]) <= 0.25 * truth[mask]).sum() / mask.sum())
+    row.append(acc)
+accuracy_rows.append(row)
+accuracy_header = ['arch'] + [col.replace('_cycles', '') for col in cols]
+accuracy_df = pd.DataFrame(accuracy_rows, columns=accuracy_header)
+accuracy_df.to_csv(accuracy_csv, index=False)
+print(f"Accuracy table written to {accuracy_csv}")
