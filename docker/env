@@ -38,6 +38,7 @@ https://repo.anaconda.com/pkgs/main/linux-64/libgcc-ng-11.2.0-h1234567_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/binutils-2.40-h1680402_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/binutils_linux-64-2.40.0-hc2dff05_2.conda
 https://repo.anaconda.com/pkgs/main/linux-64/bzip2-1.0.8-h5eee18b_6.conda
+https://repo.anaconda.com/pkgs/main/linux-64/c-ares-1.19.1-h5eee18b_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/cuda-cudart-12.4.127-h99ab3db_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/cuda-cudart-static-12.4.127-h99ab3db_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/cuda-cupti-12.4.127-h6a678d5_1.conda
@@ -66,6 +67,7 @@ https://repo.anaconda.com/pkgs/main/linux-64/libcufft-11.2.1.3-h99ab3db_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/libcufile-1.9.1.3-h99ab3db_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/libcurand-10.3.5.147-h99ab3db_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/libdeflate-1.22-h5eee18b_0.conda
+https://repo.anaconda.com/pkgs/main/linux-64/libev-4.33-h7f8727e_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/libffi-3.4.4-h6a678d5_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/libiconv-1.16-h5eee18b_3.conda
 https://repo.anaconda.com/pkgs/main/linux-64/libnpp-12.2.5.30-h99ab3db_1.conda
@@ -171,6 +173,7 @@ https://repo.anaconda.com/pkgs/main/linux-64/filelock-3.17.0-py39h06a4308_0.cond
 https://repo.anaconda.com/pkgs/main/linux-64/fsspec-2024.12.0-py39h06a4308_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/glib-2.78.4-h6a678d5_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/gmpy2-2.2.1-py39h5eee18b_0.conda
+https://repo.anaconda.com/pkgs/main/linux-64/greenlet-3.1.1-py39h6a678d5_0.conda
 https://repo.anaconda.com/pkgs/main/noarch/jupyter_core-4.5.0-py_0.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/kiwisolver-1.4.4-py39h6a678d5_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/libtorch-2.5.1-gpu_cuda124_h7d9372d_202.conda
@@ -183,6 +186,7 @@ https://repo.anaconda.com/pkgs/main/linux-64/packaging-24.2-py39h06a4308_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/pillow-11.1.0-py39hac6e08b_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/ply-3.11-py39h06a4308_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/protobuf-4.25.3-py39he36ed58_1.conda
+https://repo.anaconda.com/pkgs/main/noarch/pycparser-2.21-pyhd3eb1b0_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/pyparsing-3.2.0-py39h06a4308_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/pyqt5-sip-12.13.0-py39h5eee18b_1.conda
 https://repo.anaconda.com/pkgs/main/noarch/python-tzdata-2023.3-pyhd3eb1b0_0.conda
@@ -197,7 +201,9 @@ https://repo.anaconda.com/pkgs/main/linux-64/unicodedata2-15.1.0-py39h5eee18b_1.
 https://repo.anaconda.com/pkgs/main/linux-64/wheel-0.45.1-py39h06a4308_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/wrapt-1.17.0-py39h5eee18b_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/zipp-3.21.0-py39h06a4308_0.conda
+https://repo.anaconda.com/pkgs/main/linux-64/zope-1.0-py39h06a4308_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/cairo-1.16.0-hb05425b_5.conda
+https://repo.anaconda.com/pkgs/main/linux-64/cffi-1.17.1-py39h1fdaa30_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/cuda-compiler-12.4.1-h6a678d5_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/dbus-1.13.18-hb2f20db_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/deprecated-1.2.13-py39h06a4308_0.conda
@@ -213,8 +219,11 @@ https://repo.anaconda.com/pkgs/main/linux-64/python-dateutil-2.9.0post0-py39h06a
 https://conda.anaconda.org/pytorch/linux-64/pytorch-cuda-12.4-hc786d27_7.tar.bz2
 https://repo.anaconda.com/pkgs/main/linux-64/sip-6.7.12-py39h6a678d5_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/sympy-1.13.3-py39h06a4308_1.conda
+https://repo.anaconda.com/pkgs/main/linux-64/zope.event-5.0-py39h06a4308_0.conda
+https://repo.anaconda.com/pkgs/main/linux-64/zope.interface-7.1.1-py39h5eee18b_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/bottleneck-1.4.2-py39ha9d4c09_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/contourpy-1.2.1-py39hdb19cb5_1.conda
+https://repo.anaconda.com/pkgs/main/linux-64/gevent-23.9.1-py39h5eee18b_0.conda
 https://repo.anaconda.com/pkgs/main/linux-64/gst-plugins-base-1.14.1-h6a678d5_1.conda
 https://repo.anaconda.com/pkgs/main/linux-64/harfbuzz-4.3.0-hf52aaf7_2.conda
 https://repo.anaconda.com/pkgs/main/linux-64/jupyter_client-5.3.3-py27_1.tar.bz2
